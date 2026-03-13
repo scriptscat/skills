@@ -1,0 +1,517 @@
+# CAT.agent.* API Reference
+
+Access via `@grant CAT.agent.conversation`, `@grant CAT.agent.dom`, `@grant CAT.agent.tools`, `@grant CAT.agent.task`.
+
+## CAT.agent.conversation
+
+Create and manage sub-agent conversations.
+
+### create
+
+```typescript
+CAT.agent.conversation.create(options?: ConversationCreateOptions): Promise<ConversationInstance>
+```
+
+**ConversationCreateOptions:**
+
+```typescript
+interface ConversationCreateOptions {
+  id?: string;              // Resume existing conversation
+  system?: string;          // System prompt
+  model?: string;           // Model ID override
+  maxIterations?: number;   // Max tool-use iterations
+  skills?: "auto" | string[];  // Skills to load: "auto" = all, or specific names
+  ephemeral?: boolean;      // Memory-only, no persistence, no built-in tools/skills
+}
+```
+
+### get
+
+```typescript
+CAT.agent.conversation.get(id: string): Promise<ConversationInstance | null>
+```
+
+### ConversationInstance
+
+```typescript
+interface ConversationInstance {
+  readonly id: string;
+  readonly title: string;
+  readonly modelId: string;
+
+  // Send a message, get a complete reply
+  chat(content: string | ContentBlock[], options?: ChatOptions): Promise<ChatReply>;
+
+  // Send a message, get a streaming response
+  chatStream(content: string | ContentBlock[], options?: ChatOptions): Promise<AsyncIterable<StreamChunk>>;
+
+  // Get full message history
+  getMessages(): Promise<ChatMessage[]>;
+
+  // Persist conversation to storage
+  save(): Promise<void>;
+}
+```
+
+### ChatOptions
+
+```typescript
+interface ChatOptions {
+  tools?: ToolDefinition[];   // Inline tools for this chat turn
+}
+
+interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;  // JSON Schema
+  handler: (args: Record<string, unknown>) => Promise<unknown>;
+}
+```
+
+### ChatReply
+
+```typescript
+interface ChatReply {
+  content: string | ContentBlock[];
+  thinking?: string;
+  toolCalls?: ToolCallInfo[];
+  usage?: { inputTokens: number; outputTokens: number };
+}
+```
+
+### StreamChunk
+
+```typescript
+interface StreamChunk {
+  type: "content_delta" | "thinking_delta" | "tool_call" | "content_block" | "done" | "error";
+  content?: string;           // Text delta (for content_delta / thinking_delta)
+  block?: ContentBlock;       // Complete block (for content_block)
+  toolCall?: ToolCallInfo;    // Tool call info (for tool_call)
+  usage?: { inputTokens: number; outputTokens: number };
+  error?: string;
+  errorCode?: string;         // "rate_limit" | "auth" | "tool_timeout" | "max_iterations" | "api_error"
+}
+```
+
+**Usage pattern:**
+
+```js
+const stream = await conv.chatStream("Summarize this article...");
+let result = "";
+for await (const chunk of stream) {
+  if (chunk.type === "content_delta") {
+    result += chunk.content;
+  } else if (chunk.type === "error") {
+    console.error(chunk.error);
+  }
+}
+```
+
+### ContentBlock types
+
+```typescript
+type TextBlock = { type: "text"; text: string };
+type ImageBlock = { type: "image"; attachmentId: string; mimeType: string; name?: string };
+type FileBlock = { type: "file"; attachmentId: string; mimeType: string; name: string; size?: number };
+type AudioBlock = { type: "audio"; attachmentId: string; mimeType: string; name?: string; durationMs?: number };
+type ContentBlock = TextBlock | ImageBlock | FileBlock | AudioBlock;
+```
+
+### ChatMessage
+
+```typescript
+interface ChatMessage {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string | ContentBlock[];
+  toolCalls?: ToolCallInfo[];
+  toolCallId?: string;
+  createdAt: number;
+}
+```
+
+### ToolCallInfo
+
+```typescript
+interface ToolCallInfo {
+  id: string;
+  name: string;
+  arguments: string;    // JSON string
+  result?: string;
+}
+```
+
+## CAT.agent.dom
+
+Browser DOM control. All methods accept an optional `tabId` — defaults to the active tab if omitted.
+
+### listTabs
+
+```typescript
+CAT.agent.dom.listTabs(): Promise<TabInfo[]>
+```
+
+```typescript
+interface TabInfo {
+  tabId: number;
+  url: string;
+  title: string;
+  active: boolean;
+  windowId: number;
+  discarded: boolean;
+}
+```
+
+### navigate
+
+```typescript
+CAT.agent.dom.navigate(url: string, options?: NavigateOptions): Promise<NavigateResult>
+```
+
+```typescript
+interface NavigateOptions {
+  tabId?: number;
+  waitUntil?: boolean;    // Wait for page load
+  timeout?: number;       // Navigation timeout in ms
+}
+
+interface NavigateResult {
+  tabId: number;
+  url: string;
+  title: string;
+}
+```
+
+### readPage
+
+```typescript
+CAT.agent.dom.readPage(options?: ReadPageOptions): Promise<PageContent>
+```
+
+```typescript
+interface ReadPageOptions {
+  tabId?: number;
+  selector?: string;      // CSS selector to narrow scope
+  maxLength?: number;      // Max HTML length
+  removeTags?: string[];   // Tags/selectors to remove before reading (e.g. ["script", "style", "svg"])
+}
+
+interface PageContent {
+  title: string;
+  url: string;
+  html: string;
+  truncated?: boolean;
+  totalLength?: number;
+}
+```
+
+### screenshot
+
+```typescript
+CAT.agent.dom.screenshot(options?: ScreenshotOptions): Promise<string>
+```
+
+Returns a base64 data-URL string.
+
+```typescript
+interface ScreenshotOptions {
+  tabId?: number;
+  quality?: number;       // JPEG quality 0-100
+  fullPage?: boolean;     // Capture full scrollable page
+}
+```
+
+### click
+
+```typescript
+CAT.agent.dom.click(selector: string, options?: DomActionOptions): Promise<ActionResult>
+```
+
+```typescript
+interface DomActionOptions {
+  tabId?: number;
+  trusted?: boolean;      // CDP-level trusted click (bypasses JS event listeners)
+}
+
+interface ActionResult {
+  success: boolean;
+  navigated?: boolean;    // Did the click cause navigation?
+  url?: string;           // New URL if navigated
+  newTab?: { tabId: number; url: string };  // If a new tab opened
+  dialog?: { type: "alert" | "confirm" | "prompt"; message: string };  // If a dialog appeared
+}
+```
+
+### fill
+
+```typescript
+CAT.agent.dom.fill(selector: string, value: string, options?: DomActionOptions): Promise<ActionResult>
+```
+
+Same options and return as `click`.
+
+### scroll
+
+```typescript
+CAT.agent.dom.scroll(direction: ScrollDirection, options?: ScrollOptions): Promise<ScrollResult>
+```
+
+```typescript
+type ScrollDirection = "up" | "down" | "top" | "bottom";
+
+interface ScrollOptions {
+  tabId?: number;
+  selector?: string;      // Scroll within a specific element
+}
+
+interface ScrollResult {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+  atBottom: boolean;
+}
+```
+
+### waitFor
+
+```typescript
+CAT.agent.dom.waitFor(selector: string, options?: WaitForOptions): Promise<WaitForResult>
+```
+
+```typescript
+interface WaitForOptions {
+  tabId?: number;
+  timeout?: number;       // Max wait time in ms
+}
+
+interface WaitForResult {
+  found: boolean;
+  element?: {
+    selector: string;
+    tag: string;
+    text: string;
+    role?: string;
+    type?: string;
+    visible: boolean;
+  };
+}
+```
+
+### executeScript
+
+```typescript
+CAT.agent.dom.executeScript(code: string, options?: ExecuteScriptOptions): Promise<unknown>
+```
+
+Executes JavaScript in the page context and returns the result.
+
+```typescript
+interface ExecuteScriptOptions {
+  tabId?: number;
+}
+```
+
+### startMonitor / stopMonitor / peekMonitor
+
+Monitor DOM changes (dialogs, added nodes) on a tab. Useful for detecting what happened after a click or navigation.
+
+```typescript
+CAT.agent.dom.startMonitor(tabId: number): Promise<void>
+CAT.agent.dom.stopMonitor(tabId: number): Promise<MonitorResult>
+CAT.agent.dom.peekMonitor(tabId: number): Promise<MonitorStatus>
+```
+
+```typescript
+interface MonitorResult {
+  dialogs: Array<{ type: string; message: string }>;
+  addedNodes: Array<{ tag: string; id?: string; class?: string; role?: string; text: string }>;
+}
+
+interface MonitorStatus {
+  hasChanges: boolean;
+  dialogCount: number;
+  nodeCount: number;
+}
+```
+
+**Usage pattern:**
+
+```js
+// Start monitoring before an action
+await CAT.agent.dom.startMonitor(tabId);
+
+// Perform the action
+await CAT.agent.dom.click(".submit-btn", { tabId });
+
+// Peek to check if anything changed (non-destructive)
+const status = await CAT.agent.dom.peekMonitor(tabId);
+if (status.hasChanges) {
+  // Stop and collect all changes
+  const changes = await CAT.agent.dom.stopMonitor(tabId);
+  // changes.dialogs — any alert/confirm/prompt that appeared
+  // changes.addedNodes — new DOM elements added
+}
+```
+
+## CAT.agent.tools
+
+Manage and call CATTools programmatically.
+
+### install
+
+```typescript
+CAT.agent.tools.install(code: string): Promise<CATToolRecord>
+```
+
+Install a CATTool from its full source code (including `==CATTool==` header).
+
+### remove
+
+```typescript
+CAT.agent.tools.remove(name: string): Promise<boolean>
+```
+
+### list
+
+```typescript
+CAT.agent.tools.list(): Promise<CATToolRecord[]>
+```
+
+```typescript
+interface CATToolRecord {
+  id: string;
+  name: string;
+  description: string;
+  params: CATToolParam[];
+  grants: string[];
+  requires?: string[];
+  code: string;
+  sourceScriptUuid?: string;
+  sourceScriptName?: string;
+  installtime: number;
+  updatetime: number;
+}
+
+interface CATToolParam {
+  name: string;
+  type: "string" | "number" | "boolean";
+  required: boolean;
+  description: string;
+  enum?: string[];
+}
+```
+
+### call
+
+```typescript
+CAT.agent.tools.call(name: string, params?: Record<string, unknown>): Promise<unknown>
+```
+
+Call an installed CATTool and get its return value.
+
+## CAT.agent.task
+
+Manage scheduled Agent tasks.
+
+### create
+
+```typescript
+CAT.agent.task.create(options: AgentTaskCreateOptions): Promise<AgentTask>
+```
+
+```typescript
+interface AgentTaskCreateOptions {
+  name: string;
+  crontab: string;                    // Cron expression
+  mode: "internal" | "event";        // "internal" = Agent runs prompt; "event" = fires to script
+  enabled: boolean;
+  notify?: boolean;                   // Show notification on run
+  prompt?: string;                    // Prompt for internal mode
+  modelId?: string;
+  conversationId?: string;            // Continue in existing conversation
+  skills?: "auto" | string[];        // Which skills to load
+  maxIterations?: number;
+}
+```
+
+### list
+
+```typescript
+CAT.agent.task.list(): Promise<AgentTask[]>
+```
+
+### get
+
+```typescript
+CAT.agent.task.get(id: string): Promise<AgentTask | undefined>
+```
+
+### update
+
+```typescript
+CAT.agent.task.update(id: string, task: Partial<AgentTask>): Promise<AgentTask>
+```
+
+### remove
+
+```typescript
+CAT.agent.task.remove(id: string): Promise<boolean>
+```
+
+### runNow
+
+```typescript
+CAT.agent.task.runNow(id: string): Promise<void>
+```
+
+Trigger a task immediately, regardless of its cron schedule.
+
+### addListener / removeListener
+
+```typescript
+CAT.agent.task.addListener(
+  taskId: string,
+  callback: (trigger: AgentTaskTrigger) => void
+): number
+
+CAT.agent.task.removeListener(listenerId: number): void
+```
+
+For `mode: "event"` tasks — the script receives trigger notifications instead of the Agent running a prompt.
+
+```typescript
+interface AgentTaskTrigger {
+  taskId: string;
+  name: string;
+  crontab: string;
+  triggeredAt: number;
+}
+```
+
+### AgentTask
+
+Full task object returned by create/get/list/update:
+
+```typescript
+interface AgentTask {
+  id: string;
+  name: string;
+  crontab: string;
+  mode: "internal" | "event";
+  enabled: boolean;
+  notify: boolean;
+  prompt?: string;
+  modelId?: string;
+  conversationId?: string;
+  skills?: "auto" | string[];
+  maxIterations?: number;
+  sourceScriptUuid?: string;
+  lastruntime?: number;
+  nextruntime?: number;
+  lastRunStatus?: "success" | "error";
+  lastRunError?: string;
+  createtime: number;
+  updatetime: number;
+}
+```
