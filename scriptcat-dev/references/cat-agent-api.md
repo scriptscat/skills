@@ -22,6 +22,7 @@ interface ConversationCreateOptions {
   maxIterations?: number;   // Max tool-use iterations
   skills?: "auto" | string[];  // Skills to load: "auto" = all, or specific names
   ephemeral?: boolean;      // Memory-only, no persistence, no built-in tools/skills
+  cache?: boolean;          // Enable prompt caching (default: true)
 }
 ```
 
