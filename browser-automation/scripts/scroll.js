@@ -1,11 +1,11 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         scroll
 // @description  Scroll the page or a specific container. Returns scroll position and whether top/bottom has been reached (atTop, atBottom).
 // @param        direction string [required] Scroll direction: up, down, top, bottom
 // @param        tabId number Target tab ID (defaults to the active tab)
 // @param        selector string CSS selector of a scrollable container (defaults to the whole page)
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 try {
   const direction = args.direction;

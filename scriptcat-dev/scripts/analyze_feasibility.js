@@ -1,12 +1,12 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         analyze_feasibility
-// @description  Analyze technical feasibility of a ScriptCat script request. Evaluates the requirements, determines script type(s), identifies needed APIs, assesses risks, and proposes an implementation approach. Call this before generate_script to validate the plan with the user.
+// @description  Analyze technical feasibility of a ScriptCat script request. Evaluates the requirements, determines script type (UserScript or Skill Script), identifies needed APIs, assesses risks, and proposes an implementation approach. Call this before generate_script to validate the plan with the user.
 // @param        requirements  string  [required]  User requirements organized by the main agent: what the script should do, target sites, trigger conditions, and any known constraints.
 // @param        target_url    string  URL of the target website. When provided, fetches the page and includes a simplified HTML structure for the sub-agent to analyze DOM feasibility, available selectors, and embedded data.
 // @grant        CAT.agent.conversation
 // @grant        GM_xmlhttpRequest
 // @timeout      120
-// ==/CATTool==
+// ==/SkillScript==
 
 const { requirements, target_url } = args;
 
@@ -161,8 +161,8 @@ Use \`read_reference\` to look up exact API signatures. Do NOT guess — verify.
 Available files:
 - **scriptcat.d.ts** — TypeScript definitions for all GM APIs and CAT.agent.* APIs
 - **userscript-api.md** — GM_* / GM.* API documentation
-- **cattool-format.md** — CATTool metadata format and runtime behavior
-- **cat-agent-api.md** — CAT.agent.dom, conversation, tools, task APIs
+- **skillscript-format.md** — Skill Script metadata format and runtime behavior
+- **cat-agent-api.md** — CAT.agent.dom, conversation, skills, task APIs
 - **coding-patterns.md** — Common code patterns, header formats, and coding rules
 
 ## Decision Principles
@@ -179,7 +179,7 @@ Available files:
 ### Multi-Script
 If requirements need both page-level and background processing: split into separate scripts, use \`GM.setValue\`/\`GM.getValue\` for data sharing.
 
-### CATTool Constraints
+### Skill Script Constraints
 Sandbox only (no DOM — use \`CAT.agent.dom\`), default 30s timeout (extend via \`@timeout\`), params via \`args\`, results via \`return\`.
 
 ### Error & Edge Case Considerations
@@ -192,7 +192,7 @@ Identify likely failure points and recommend how the generated code should handl
 ## Output Format
 
 ### Script Type
-UserScript (content / background / crontab) or CATTool. If multiple scripts needed, list each.
+UserScript (content / background / crontab) or Skill Script. If multiple scripts needed, list each.
 
 ### Required APIs
 Specific APIs needed (GM.*, CAT.agent.*, etc.) with brief justification.

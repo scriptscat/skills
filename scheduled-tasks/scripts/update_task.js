@@ -1,4 +1,4 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         update_task
 // @description  Update a scheduled task's configuration — cron expression, enabled/disabled, prompt, etc.
 // @param        id string [required] Task ID
@@ -11,7 +11,7 @@
 // @param        skills string Skill loading strategy: "auto"=load all, or comma-separated skill names
 // @param        maxIterations number Max tool-call rounds for LLM in internal mode
 // @grant        CAT.agent.task
-// ==/CATTool==
+// ==/SkillScript==
 
 const updates = {};
 

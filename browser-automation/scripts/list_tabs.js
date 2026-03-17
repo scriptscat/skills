@@ -1,8 +1,8 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         list_tabs
 // @description  List all open browser tabs with tabId, URL, title, and active status. Use this first to find the target tabId for other tools.
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 try {
   const tabs = await CAT.agent.dom.listTabs();

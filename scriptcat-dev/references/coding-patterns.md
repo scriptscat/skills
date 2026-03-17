@@ -16,15 +16,15 @@
 // ==/UserScript==
 ```
 
-### CATTool
+### Skill Script
 ```js
-// ==CATTool==
-// @name         tool_name
-// @description  Specific description — LLM reads this to decide when to call
+// ==SkillScript==
+// @name         script_name
+// @description  Specific description — LLM reads this to decide when to invoke
 // @param        paramName  type  [required]  description
 // @grant        GM_xmlhttpRequest
 // @timeout      120
-// ==/CATTool==
+// ==/SkillScript==
 ```
 
 ## Coding Rules
@@ -32,11 +32,11 @@
 1. **@grant everything** — declare every API used. Missing grants cause silent `undefined` errors at runtime.
 2. **GM.* for await, GM_* for callbacks** — use `GM.xmlHttpRequest` (Promise) with `await`; use `GM_xmlhttpRequest` (callback) only for streaming/onprogress.
 3. **Never hardcode secrets** — use `GM.getValue` or UserConfig for API keys and tokens.
-4. **CATTool error handling** — always wrap risky operations in try-catch, return `{ error: "message" }` so the Agent can react.
-5. **CATTools have NO DOM** — use `CAT.agent.dom` for any browser interaction.
+4. **Skill Script error handling** — always wrap risky operations in try-catch, return `{ error: "message" }` so the Agent can react.
+5. **Skill Scripts have NO DOM** — use `CAT.agent.dom` for any browser interaction.
 6. **@match / @background / @crontab are mutually exclusive** — a single script CANNOT combine them.
 7. **@connect for HTTP requests** — declare every domain used with `GM_xmlhttpRequest`.
-8. **CATTool timeout** — default 30s; use `@timeout N` (seconds) for long-running tools.
+8. **Skill Script timeout** — default 30s; use `@timeout N` (seconds) for long-running scripts.
 9. **@param types** — only `string`, `number`, `boolean`, `string[enum,values]`. No objects/arrays; use JSON strings and parse inside the tool.
 10. **Return structured data** — return objects, not raw strings. Keep returns concise; don't dump full HTML.
 
@@ -63,7 +63,7 @@ const val = await GM.getValue("key", defaultValue);
 await GM.setValue("key", newValue);
 ```
 
-### Sub-agent Conversation (CATTool)
+### Sub-agent Conversation (Skill Script)
 ```js
 // @grant CAT.agent.conversation
 const conv = await CAT.agent.conversation.create({
@@ -76,7 +76,7 @@ const text = typeof reply.content === "string"
   : reply.content.map(b => b.text || "").join("");
 ```
 
-### Browser Automation (CATTool)
+### Browser Automation (Skill Script)
 ```js
 // @grant CAT.agent.dom
 await CAT.agent.dom.fill("input[name=q]", "query", { trusted: true });
@@ -85,7 +85,7 @@ await CAT.agent.dom.waitFor(".results", { timeout: 5000 });
 const page = await CAT.agent.dom.readPage({ selector: ".results" });
 ```
 
-### Returning Attachments (CATTool)
+### Returning Attachments (Skill Script)
 ```js
 return {
   content: "Screenshot captured.",

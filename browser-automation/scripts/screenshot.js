@@ -1,10 +1,10 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         screenshot
 // @description  Capture a screenshot of the target tab. Returns an image attachment that vision models can view directly.
 // @param        tabId number Target tab ID (defaults to the active tab)
 // @param        quality number Image quality 1-100 (default: 80)
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 try {
   const options = {};

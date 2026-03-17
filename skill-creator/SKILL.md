@@ -1,6 +1,6 @@
 ---
 name: scriptcat-skill-creator
-description: Create and improve ScriptCat Agent Skills. Use when the user wants to create a new Skill, write CATTool scripts, improve an existing Skill, or package a Skill for distribution. Also applies when the user says things like "make a tool that does X", "build an Agent plugin", "automate XX with a Skill", or wants to extend the Agent's capabilities.
+description: Create and improve ScriptCat Agent Skills. Use when the user wants to create a new Skill, write Skill Scripts, improve an existing Skill, or package a Skill for distribution. Also applies when the user says things like "make a tool that does X", "build an Agent plugin", "automate XX with a Skill", or wants to extend the Agent's capabilities.
 ---
 
 # ScriptCat Skill Creator
@@ -11,9 +11,9 @@ You help users create, improve, and package Skills for the ScriptCat Agent.
 
 ScriptCat is a browser extension (enhanced Tampermonkey) whose Agent feature lets userscripts call LLMs. A Skill extends the Agent's capabilities:
 
-**Skill = prompt (SKILL.md) + optional CATTool scripts (scripts/) + optional reference docs (references/)**
+**Skill = prompt (SKILL.md) + optional Skill Scripts (scripts/) + optional reference docs (references/)**
 
-Skills load progressively: the Agent always sees each Skill's name + description in its system prompt. When it decides a Skill is relevant, it calls the built-in `load_skill(name)` meta-tool, which injects the SKILL.md body and registers any CATTools from scripts/. References are read on demand via `read_reference`. Skill CATTools get a `skillname__` prefix at runtime to avoid collisions.
+Skills load progressively: the Agent always sees each Skill's name + description in its system prompt. When it decides a Skill is relevant, it calls the built-in `load_skill(name)` meta-tool, which injects the SKILL.md body and lists available scripts. References are read on demand via `read_reference`. Scripts are invoked via a single `execute_skill_script` meta-tool that takes `skill`, `script`, and `params` arguments.
 
 Read `references/scriptcat.d.ts` for full type definitions of all CAT APIs.
 
@@ -32,7 +32,7 @@ Otherwise, clarify:
 - **Capabilities needed**: DOM access? HTTP requests? Screenshots? Scheduled tasks? Storage?
 - **Target audience**: Will other people install this, or is it personal use?
 
-Don't assume — a user saying "make a translation tool" might want a prompt-only Skill that guides the LLM's translation style, or a CATTool that calls a translation API, or a full Skill that reads pages and translates in-place. Ask when it's ambiguous.
+Don't assume — a user saying "make a translation tool" might want a prompt-only Skill that guides the LLM's translation style, or a Skill Script that calls a translation API, or a full Skill that reads pages and translates in-place. Ask when it's ambiguous.
 
 ### Step 2: Design
 
@@ -41,13 +41,13 @@ Decide the structure based on the interview:
 ```
 skill-name/
 ├── SKILL.md              # Required: prompt + metadata
-├── scripts/              # Optional: CATTool scripts (.js)
+├── scripts/              # Optional: Skill Scripts (.js)
 └── references/           # Optional: large docs, loaded on demand
 ```
 
 **When to use each component:**
 - **SKILL.md only** — the Skill is about guiding LLM behavior (translation style, code review rules)
-- **+ scripts/** — the Skill needs to do things (fetch data, manipulate DOM, call APIs)
+- **+ scripts/** — the Skill needs to do things (fetch data, manipulate DOM, call APIs) via Skill Scripts
 - **+ references/** — there's too much reference material for SKILL.md (>500 lines), or docs that are only needed sometimes
 
 Share your proposed structure with the user before writing code.
@@ -71,7 +71,7 @@ config:                   # Optional: user-configurable fields (see below)
 
 #### Config fields (optional)
 
-If the Skill needs user-provided credentials, preferences, or settings, declare them in the `config` block. Users fill these in through the Skill settings UI; CATTools access them via the `CAT_CONFIG` global.
+If the Skill needs user-provided credentials, preferences, or settings, declare them in the `config` block. Users fill these in through the Skill settings UI; Skill Scripts access them via the `CAT_CONFIG` global.
 
 **Supported types:**
 
@@ -103,7 +103,7 @@ config:
     default: metric
 ```
 
-**Reading config in CATTools:**
+**Reading config in Skill Scripts:**
 ```js
 const apiKey = CAT_CONFIG.API_KEY;
 if (!apiKey) {
@@ -176,9 +176,9 @@ The body should tell the Agent *how to act*, not explain concepts. Good patterns
 
 Keep the body under 500 lines. The `browser-automation` Skill in `references/skill-examples.md` is a good reference for structure and tone.
 
-### Step 4: Write CATTool scripts
+### Step 4: Write Skill Scripts
 
-CATTools are JS files in `scripts/` with a `==CATTool==` metadata header. Read `references/cattool-api.md` for the full spec.
+Skill Scripts are JS files in `scripts/` with a `==SkillScript==` metadata header. Read `references/skill-script-api.md` for the full spec.
 
 Key facts:
 - Runs in ScriptCat Sandbox with **30-second timeout**
@@ -187,17 +187,18 @@ Key facts:
 - Full GM API + CAT API access via `@grant` (independent auth, not inherited)
 - `@require` for external libs (cached on install)
 - Types: `string` / `number` / `boolean` only — no object/array nesting
-- Supports returning **attachments** (images/files/audio) — return `{ content: "text for LLM", attachments: [{ type, name, mimeType, data }] }`. See `cattool-api.md` for details
+- Invoked via the `execute_skill_script` meta-tool (takes `skill`, `script`, `params`) or programmatically via `CAT.agent.skills.call(skillName, scriptName, params?)`
+- Supports returning **attachments** (images/files/audio) — return `{ content: "text for LLM", attachments: [{ type, name, mimeType, data }] }`. See `skill-script-api.md` for details
 
 #### Examples
 
 **Simple tool — no dependencies:**
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         greet
 // @description  Greet a person by name, returns a greeting object
 // @param        name  string  [required]  Person's name
-// ==/CATTool==
+// ==/SkillScript==
 
 const { name } = args;
 return { greeting: `Hello, ${name}! Welcome to ScriptCat Agent.` };
@@ -205,12 +206,12 @@ return { greeting: `Hello, ${name}! Welcome to ScriptCat Agent.` };
 
 **HTTP request — cross-origin fetch:**
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         fetch_page_title
 // @description  Fetch a URL and extract the page title. Returns { title, url }
 // @param        url  string  [required]  Target URL
 // @grant        GM_xmlhttpRequest
-// ==/CATTool==
+// ==/SkillScript==
 
 const { url } = args;
 const resp = await GM.xmlHttpRequest({ url, method: "GET" });
@@ -220,12 +221,12 @@ return { title: match ? match[1] : "No title found", url };
 
 **DOM operation — browser control:**
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         read_active_page
 // @description  Read the current tab's page content. Returns { title, url, content }
 // @param        selector  string  CSS selector to narrow scope (optional)
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 const { selector } = args;
 const page = await CAT.agent.dom.readPage({ selector });
@@ -234,11 +235,11 @@ return { title: page.title, url: page.url, content: page.html };
 
 **Returning attachments — screenshot example:**
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         take_screenshot
 // @description  Capture a screenshot of the current tab. Returns the image as an attachment
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 const screenshot = await CAT.agent.dom.takeScreenshot();
 return {
@@ -254,32 +255,46 @@ return {
 
 **Sub-agent conversation — scoped to current Skill:**
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         generate_code
 // @description  Generate code using a sub-agent that has access to this Skill's references
 // @param        spec  string  [required]  What to generate
 // @grant        CAT.agent.conversation
-// ==/CATTool==
+// ==/SkillScript==
 
 const { spec } = args;
 const conv = await CAT.agent.conversation.create({
   system: "You are a code generator. Use read_reference to look up API details when needed.",
   ephemeral: true,              // Memory-only, not persisted to storage
-  skills: ["my-skill-name"],    // Only load this Skill — sub-agent gets its tools + references
+  skills: ["my-skill-name"],    // Only load this Skill — sub-agent gets its scripts + references
 });
 const reply = await conv.chat(spec);
 return { content: typeof reply.content === "string" ? reply.content : reply.content.map(b => b.text || "").join("") };
 ```
 
-> **Tip:** `ephemeral: true` makes the conversation memory-only (not persisted), and `skills` controls which Skills the sub-agent can access. Use both together: `ephemeral: true` + `skills: ["current-skill-name"]` gives the sub-agent a lightweight, non-persisted conversation with access to just this Skill's `read_reference` and CATTools. `skills` accepts `"auto"` (all installed Skills) or `string[]` (specific names).
+> **Tip:** `ephemeral: true` makes the conversation memory-only (not persisted), and `skills` controls which Skills the sub-agent can access. Use both together: `ephemeral: true` + `skills: ["current-skill-name"]` gives the sub-agent a lightweight, non-persisted conversation with access to just this Skill's `read_reference` and Skill Scripts. `skills` accepts `"auto"` (all installed Skills) or `string[]` (specific names).
+
+**Programmatic invocation — calling another Skill's script:**
+```js
+// ==SkillScript==
+// @name         enhanced_search
+// @description  Search using another Skill's script
+// @param        query  string  [required]  Search query
+// @grant        CAT.agent.skills
+// ==/SkillScript==
+
+const { query } = args;
+const result = await CAT.agent.skills.call("web-scraper", "fetch_content", { url: `https://search.example.com?q=${encodeURIComponent(query)}` });
+return result;
+```
 
 #### Common pitfalls
 
 - Never hardcode API keys or secrets — use `config` frontmatter fields (accessed via `CAT_CONFIG`) for install-time credentials, or `GM.getValue` for runtime-managed secrets
 - Don't return raw full-page HTML — extract and return only the relevant data to save tokens
-- Don't build one mega-tool with many params — split into focused single-responsibility tools
+- Don't build one mega-script with many params — split into focused single-responsibility scripts
 - Don't ignore errors — catch exceptions and return `{ error: "meaningful message" }` so the LLM can react
-- **Attachment content field**: when a tool returns attachments (files, images), the LLM **cannot see** the attachment contents — it only sees the `content` text field. So `content` must explicitly state what was generated and instruct the LLM not to regenerate it. Example: `content: "Code generation complete. Generated 1 script (attached). Do NOT rewrite the code."`
+- **Attachment content field**: when a script returns attachments (files, images), the LLM **cannot see** the attachment contents — it only sees the `content` text field. So `content` must explicitly state what was generated and instruct the LLM not to regenerate it. Example: `content: "Code generation complete. Generated 1 script (attached). Do NOT rewrite the code."`
 
 ### Step 5: Verify
 
@@ -287,14 +302,14 @@ After writing all files, do a self-review:
 
 1. **Description check**: Read just the name + description. Is it 30-80 words? Would it trigger on the right prompts and NOT trigger on unrelated ones?
 2. **Prompt check**: Read the SKILL.md body as if you were the Agent seeing it for the first time. Are the instructions actionable? Can you follow the workflow without ambiguity?
-3. **Tool check**: For each CATTool, verify:
+3. **Script check**: For each Skill Script, verify:
    - `@description` explains what it takes and what it returns
    - All required params are marked `[required]`
    - `@grant` lists all needed permissions
    - Return value is structured (object, not raw string)
    - No hardcoded secrets (use `config` frontmatter or `GM.getValue` instead)
-4. **Config check** (if applicable): Each `config` field has `title` and `type`; `select` fields have `values`; sensitive fields use `secret: true`; CATTools check required config and return clear errors when missing
-5. **Naming check**: Tool names in SKILL.md match the `@name` in scripts (SKILL.md uses base names; at runtime they get `skillname__` prefix)
+4. **Config check** (if applicable): Each `config` field has `title` and `type`; `select` fields have `values`; sensitive fields use `secret: true`; Skill Scripts check required config and return clear errors when missing
+5. **Naming check**: Script names in SKILL.md match the `@name` in scripts (the Agent invokes them via `execute_skill_script` with the skill and script name)
 
 Present the complete Skill to the user for review before finalizing.
 
@@ -304,7 +319,7 @@ Tell the user how to test the Skill before distributing:
 
 1. **Quick-install**: zip the Skill directory → import in ScriptCat → Agent → Skills → Import
 2. **Smoke test**: open the Agent chat, type a prompt that should trigger the Skill, verify it loads (the Agent will call `load_skill`)
-3. **Tool test**: for each CATTool, craft a prompt that makes the Agent call it. Check:
+3. **Script test**: for each Skill Script, craft a prompt that makes the Agent call it. Check:
    - Does the tool return the expected structure?
    - Do error cases return `{ error: "..." }` instead of throwing?
    - Does the Agent use the return value correctly in its response?
@@ -334,9 +349,9 @@ Read the existing SKILL.md and all scripts/ before suggesting changes. Understan
 Identify the category of problem:
 
 - **Trigger issues** — Skill doesn't fire when it should, or fires when it shouldn't → fix the description (check length, keywords, specificity)
-- **Bad tool output** — tools return wrong or useless data → fix the CATTool logic or return structure
+- **Bad script output** — scripts return wrong or useless data → fix the Skill Script logic or return structure
 - **Unclear prompt** — Agent doesn't follow the intended workflow → rewrite the SKILL.md body with clearer instructions, better examples, or explicit branching
-- **Missing capability** — Skill can't do something it should → add a new CATTool or reference
+- **Missing capability** — Skill can't do something it should → add a new Skill Script or reference
 
 ### 3. Targeted edits
 
@@ -346,8 +361,8 @@ Fix only what's broken. Don't rewrite the entire Skill when a description tweak 
 
 Use `read_reference` to load these when the specific condition applies:
 
-- **`scriptcat.d.ts`** — read when you need exact API signatures, method parameters, or return types for `CAT.agent.dom`, `CAT.agent.task`, `CAT.agent.conversation`, `CAT.agent.tools`, or `CAT_CONFIG`. This is the authoritative source of truth.
-- **`cattool-api.md`** — read when writing CATTool scripts and you need to check metadata syntax (`@param`, `@grant`, `@timeout`, `@require`), return format details (especially attachments), or GM API usage patterns.
+- **`scriptcat.d.ts`** — read when you need exact API signatures, method parameters, or return types for `CAT.agent.dom`, `CAT.agent.task`, `CAT.agent.conversation`, `CAT.agent.skills`, or `CAT_CONFIG`. This is the authoritative source of truth.
+- **`skill-script-api.md`** — read when writing Skill Scripts and you need to check metadata syntax (`@param`, `@grant`, `@timeout`, `@require`), return format details (especially attachments), or GM API usage patterns.
 - **`skill-examples.md`** — read when deciding how to structure a SKILL.md prompt, or when you want to show the user what a well-written Skill looks like. Contains analysis of the `browser-automation` Skill and design pattern templates (prompt-only, tool-set, references-based).
 
 Don't load all three upfront. Read them on demand when the specific need arises. Don't dump their content into the Skill you're creating — they're for your reference, not the user's.

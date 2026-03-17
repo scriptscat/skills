@@ -1,10 +1,10 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         weather_query
 // @description  查询指定城市的实时天气信息，包括温度、天气状况和湿度
 // @param        city string [required] 城市名称，如 北京、上海、Tokyo
 // @param        unit string[celsius,fahrenheit] 温度单位，默认 celsius
 // @grant        GM_xmlhttpRequest
-// ==/CATTool==
+// ==/SkillScript==
 
 // 演示：使用 GM_xmlhttpRequest 调用外部 API
 // 这里使用 wttr.in 的免费天气 API 作为示例

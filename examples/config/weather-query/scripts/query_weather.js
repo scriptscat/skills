@@ -1,9 +1,9 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         query_weather
 // @description  Query current weather for a city using OpenWeatherMap API
 // @param        city string The city name to query weather for
 // @grant        GM_xmlhttpRequest
-// ==/CATTool==
+// ==/SkillScript==
 
 const apiKey = CAT_CONFIG.API_KEY;
 if (!apiKey) {

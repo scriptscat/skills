@@ -1,9 +1,9 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         delete_task
 // @description  Delete a scheduled task and clear its run history
 // @param        id string [required] Task ID
 // @grant        CAT.agent.task
-// ==/CATTool==
+// ==/SkillScript==
 
 const task = await CAT.agent.task.get(args.id);
 if (!task) {

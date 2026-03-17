@@ -1,6 +1,6 @@
 ---
 name: scriptcat-dev
-description: Write ScriptCat UserScripts and CATTool scripts. Use when the user wants to create a userscript, write a CATTool, use GM APIs (GM_xmlhttpRequest, GM_setValue, etc.), CAT.agent APIs (dom, conversation, tools, task), or automate browser tasks with ScriptCat. Also applies to editing, debugging, or explaining existing ScriptCat scripts.
+description: Write ScriptCat UserScripts and Skill Scripts. Use when the user wants to create a userscript, write a Skill Script, use GM APIs (GM_xmlhttpRequest, GM_setValue, etc.), CAT.agent APIs (dom, conversation, skills, task), or automate browser tasks with ScriptCat. Also applies to editing, debugging, or explaining existing ScriptCat scripts.
 ---
 
 # ScriptCat Script Developer
@@ -14,7 +14,7 @@ This skill is about writing the JavaScript code itself. For creating Skill packa
 ## Workflow
 
 1. **Understand the request** — determine what the user wants to build
-2. **Determine script type** — UserScript vs CATTool (use the decision guide below for a quick classification only)
+2. **Determine script type** — UserScript vs Skill Script (use the decision guide below for a quick classification only)
 3. **Collect details** — use the requirements checklist to gather necessary information
 4. **Analyze feasibility** — call `analyze_feasibility` with organized requirements. **This is mandatory** — do NOT skip it, do NOT do the analysis yourself. The sub-agent determines script type(s), APIs, approach, risks, and feasibility. Your step-2 classification is just a preliminary guess; the sub-agent's verdict overrides it.
 5. **Confirm approach** — present the sub-agent's technical analysis to the user; get their go-ahead (or adjust based on feedback)
@@ -34,11 +34,11 @@ This skill is about writing the JavaScript code itself. For creating Skill packa
 
 ## Script Type Decision Guide
 
-| | UserScript | CATTool |
+| | UserScript | Skill Script |
 |---|---|---|
 | **Purpose** | Runs on pages or on a schedule — modifies pages, automates tasks, monitors sites | Called by the AI Agent as a tool — fetches data, performs actions, returns results |
-| **Header** | `==UserScript==` | `==CATTool==` |
-| **Trigger** | Page load (`@match`), cron (`@crontab`), or manual | Agent decides to call it based on `@description` |
+| **Header** | `==UserScript==` | `==SkillScript==` |
+| **Trigger** | Page load (`@match`), cron (`@crontab`), or manual | Agent decides to call it via the `execute_skill_script` meta-tool |
 | **Runs in** | Page context (content script) or background | Sandbox (background-only) |
 | **UI** | Can modify DOM, show notifications, register menus | No DOM access — returns data to the Agent |
 | **Timeout** | None (long-running OK) | Default 30s, adjustable via `@timeout` |
@@ -48,8 +48,8 @@ This skill is about writing the JavaScript code itself. For creating Skill packa
 **Quick decision:**
 - User wants something that runs automatically on certain pages → **UserScript** with `@match`
 - User wants a scheduled/cron job → **UserScript** with `@crontab`
-- User wants something the AI can call on demand → **CATTool**
-- User wants to give the Agent a new capability → **CATTool**
+- User wants something the AI can call on demand → **Skill Script**
+- User wants to give the Agent a new capability → **Skill Script**
 
 ## Requirements Checklist
 
@@ -61,7 +61,7 @@ Gather these before calling `analyze_feasibility`:
 - **External services** — does it need to call any APIs or external services?
 - **Storage** — does it need to persist data across runs?
 - **Configuration** — does it need a user settings UI?
-- **CATTool-specific** — what parameters does it accept? What data does it return?
+- **Skill Script-specific** — what parameters does it accept? What data does it return?
 
 Not all items apply to every request. Use judgment — a simple "add a button to this page" doesn't need all seven questions.
 
@@ -84,6 +84,6 @@ Use `read_reference` if you need API details:
 
 - `scriptcat.d.ts` — complete TypeScript definitions for all APIs
 - `userscript-api.md` — GM_* / GM.* API documentation
-- `cattool-format.md` — CATTool metadata format and runtime behavior
-- `cat-agent-api.md` — CAT.agent.dom, conversation, tools, task APIs
+- `skillscript-format.md` — Skill Script metadata format and runtime behavior
+- `cat-agent-api.md` — CAT.agent.dom, conversation, skills, task APIs
 - `coding-patterns.md` — common code patterns and coding rules

@@ -794,7 +794,7 @@ declare namespace GMTypes {
 
 // ===========================================================================
 // CAT.agent — ScriptCat Agent API
-// @grant CAT.agent.conversation / CAT.agent.tools / CAT.agent.dom /
+// @grant CAT.agent.conversation / CAT.agent.dom /
 //        CAT.agent.task / CAT.agent.skills
 // ===========================================================================
 
@@ -1030,72 +1030,6 @@ declare namespace CATAgent {
 
     /** Get an existing conversation by ID. Returns `null` if not found. */
     get(id: string): Promise<ConversationInstance | null>;
-  }
-}
-
-// ---- CAT.agent.tools — CATTool management API ----
-
-/** CATTool management types — install, remove, list, and invoke CATTools. */
-declare namespace CATAgentTools {
-  /** A parameter definition for a CATTool. */
-  interface CATToolParam {
-    /** Parameter name. */
-    name: string;
-    /** Parameter type. */
-    type: "string" | "number" | "boolean";
-    /** Whether required. */
-    required: boolean;
-    /** Parameter description. */
-    description: string;
-    /** Allowed values (for enum parameters). */
-    enum?: string[];
-  }
-
-  /** A persisted CATTool record. */
-  interface CATToolRecord {
-    /** Internal UUID. */
-    id: string;
-    /** Tool name (from `@name` metadata). */
-    name: string;
-    /** Tool description. */
-    description: string;
-    /** Parameter definitions. */
-    params: CATToolParam[];
-    /** Required GM grants. */
-    grants: string[];
-    /** `@require` URL list. */
-    requires?: string[];
-    /** Full source code (including metadata header). */
-    code: string;
-    /** UUID of the script that installed this tool. */
-    sourceScriptUuid?: string;
-    /** Name of the script that installed this tool. */
-    sourceScriptName?: string;
-    /** Installation timestamp. */
-    installtime: number;
-    /** Last update timestamp. */
-    updatetime: number;
-  }
-
-  /** Summary of a CATTool (without source code). Returned by `list()`. */
-  type CATToolSummary = Omit<CATToolRecord, "code">;
-
-  /**
-   * `CAT.agent.tools` — manage and invoke CATTools.
-   * @grant CAT.agent.tools
-   */
-  interface ToolsAPI {
-    /** Install a CATTool from source code. */
-    install(code: string): Promise<CATToolRecord>;
-
-    /** Remove a CATTool by name. */
-    remove(name: string): Promise<boolean>;
-
-    /** List all installed CATTools (without source code). */
-    list(): Promise<CATToolSummary[]>;
-
-    /** Invoke a CATTool by name with optional parameters. */
-    call(name: string, params?: Record<string, unknown>): Promise<unknown>;
   }
 }
 
@@ -1416,15 +1350,29 @@ declare namespace CATAgentTask {
 
 // ---- CAT.agent.skills — Skill management API ----
 
-/** Skill management types — install, remove, and query Agent Skills. */
+/** Skill management types — install, remove, query, and invoke Agent Skills. */
 declare namespace CATAgentSkills {
+  /** A parameter definition for a Skill Script. */
+  interface SkillScriptParam {
+    /** Parameter name. */
+    name: string;
+    /** Parameter type. */
+    type: "string" | "number" | "boolean";
+    /** Whether required. */
+    required: boolean;
+    /** Parameter description. */
+    description: string;
+    /** Allowed values (for enum parameters). */
+    enum?: string[];
+  }
+
   /** Summary info for an installed Skill. */
   interface SkillSummary {
     /** Skill name. */
     name: string;
     /** Skill description. */
     description: string;
-    /** CATTool names bundled in this Skill (from `scripts/` directory). */
+    /** Skill Script names bundled in this Skill (from `scripts/` directory). */
     toolNames: string[];
     /** Reference document names (from `references/` directory). */
     referenceNames: string[];
@@ -1461,7 +1409,7 @@ declare namespace CATAgentSkills {
   }
 
   /**
-   * `CAT.agent.skills` — manage Agent Skills (packaged prompts + tools + references).
+   * `CAT.agent.skills` — manage Agent Skills (packaged prompts + Skill Scripts + references).
    * @grant CAT.agent.skills
    */
   interface SkillsAPI {
@@ -1474,7 +1422,7 @@ declare namespace CATAgentSkills {
     /**
      * Install a Skill from a SKILL.md string, with optional bundled scripts and references.
      * @param skillMd - The SKILL.md content (with YAML frontmatter).
-     * @param scripts - CATTool scripts to bundle.
+     * @param scripts - Skill Scripts to bundle (with `==SkillScript==` headers).
      * @param references - Reference documents to bundle.
      */
     install(
@@ -1485,21 +1433,27 @@ declare namespace CATAgentSkills {
 
     /** Remove a Skill by name. */
     remove(name: string): Promise<boolean>;
+
+    /**
+     * Call a Skill Script by specifying the skill name and script name.
+     * @param skillName - The name of the Skill containing the script.
+     * @param scriptName - The name of the script within the Skill.
+     * @param params - Optional parameters to pass to the script.
+     */
+    call(skillName: string, scriptName: string, params?: Record<string, unknown>): Promise<unknown>;
   }
 }
 
 // ---- CAT global object ----
 
 /**
- * ScriptCat Agent global object — provides access to conversation, tools, DOM, task, and skills APIs.
+ * ScriptCat Agent global object — provides access to conversation, DOM, task, and skills APIs.
  * Each sub-API requires its own `@grant` declaration.
  */
 declare const CAT: {
   agent: {
     /** @grant CAT.agent.conversation */
     conversation: CATAgent.ConversationAPI;
-    /** @grant CAT.agent.tools */
-    tools: CATAgentTools.ToolsAPI;
     /** @grant CAT.agent.dom */
     dom: CATAgentDom.DomAPI;
     /** @grant CAT.agent.task */
@@ -1510,7 +1464,7 @@ declare const CAT: {
 };
 
 /**
- * Skill configuration values injected into the CATTool sandbox at runtime.
+ * Skill configuration values injected into the Skill Script sandbox at runtime.
  *
  * Declared in the `config` block of a SKILL.md frontmatter and filled in by
  * the user through the Skill settings UI. The object is frozen at injection

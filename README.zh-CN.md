@@ -10,17 +10,6 @@
 | [scheduled-tasks](./scheduled-tasks/) | 基于 cron 的定时任务，支持 internal（LLM 自动执行）和 event（脚本回调）两种模式 |
 | [skill-creator](./skill-creator/) | 辅助创建、测试和打包新的 Skill |
 
-## 独立 CATTool
-
-通用工具，无需 Skill 即可单独安装。位于 [`cattools/`](./cattools/)：
-
-| 工具 | 说明 |
-|------|------|
-| [http_request](./cattools/http_request.js) | 跨域 HTTP 请求（GET/POST/PUT/DELETE），基于 GM_xmlhttpRequest |
-| [run_script](./cattools/run_script.js) | 在沙箱环境中执行 JavaScript，用于数据处理和计算 |
-
-通过 `CAT.agent.tools.install(code)` 安装，或在 **Agent → CATTools** 页面导入。
-
 ## 示例
 
 Agent 脚本 API 代码示例，位于 [`examples/`](./examples/)：
@@ -29,7 +18,7 @@ Agent 脚本 API 代码示例，位于 [`examples/`](./examples/)：
 |------|------|
 | [conversation](./examples/conversation/) | 对话 API — 聊天、流式输出、工具调用 |
 | [dom](./examples/dom/) | DOM API — 页面读取、表单填写、标签页管理 |
-| [tools](./examples/tools/) | CATTool — 编写和使用自定义工具 |
+| [tools](./examples/tools/) | Skill 脚本 — 在 Skill 中编写和使用自定义脚本 |
 | [config](./examples/config/) | Skill 配置 — 声明配置字段，通过 `CAT_CONFIG` 访问 |
 | [page_copilot.user.js](./examples/page_copilot.user.js) | 完整用户脚本 — 右键唤起的 AI 网页助手 |
 
@@ -42,9 +31,11 @@ Agent 脚本 API 代码示例，位于 [`examples/`](./examples/)：
 ```
 skill-name/
 ├── SKILL.md          # 提示词 + YAML frontmatter（name, description, config）
-├── scripts/          # CATTool 脚本（可选）
+├── scripts/          # Skill 脚本，使用 ==SkillScript== 头部格式（可选）
 └── references/       # Agent 上下文参考文档（可选）
 ```
+
+`scripts/` 目录中的脚本使用 `==SkillScript==` 头部格式声明元数据和参数。Agent 通过 `execute_skill_script` 元工具调用它们，也可以通过 `CAT.agent.skills.call(skillName, scriptName, params?)` 编程式调用。
 
 ### 配置字段
 
@@ -63,7 +54,7 @@ config:
 ```
 
 ```javascript
-// 在 CATTool 脚本中：
+// 在 Skill 脚本中：
 const key = CAT_CONFIG.API_KEY;
 ```
 

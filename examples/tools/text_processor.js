@@ -1,10 +1,10 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         text_processor
 // @description  文本处理工具，支持字数统计、提取关键词、文本摘要等操作
 // @param        text string [required] 要处理的文本内容
 // @param        action string[count,keywords,reverse] 处理动作
 // @param        maxLength number 最大输出长度限制
-// ==/CATTool==
+// ==/SkillScript==
 
 const text = args.text;
 const action = args.action || "count";

@@ -1,4 +1,4 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         click_and_wait
 // @description  Click an element via CDP trusted click, then wait for page changes (navigation, new tabs, DOM mutations, JS dialogs). A sub-agent analyzes any new DOM elements and returns a summary in `pageChanges`. Use this for any click that may trigger navigation, popups, or async UI updates.
 // @param        selector string [required] CSS selector of the element to click
@@ -6,7 +6,7 @@
 // @param        timeout number Wait timeout in ms (default: 5000)
 // @grant        CAT.agent.dom
 // @grant        CAT.agent.conversation
-// ==/CATTool==
+// ==/SkillScript==
 
 const timeout = args.timeout || 5000;
 const interval = 500;

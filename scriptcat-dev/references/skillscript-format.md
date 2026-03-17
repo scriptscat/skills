@@ -1,29 +1,29 @@
-# CATTool Format Reference
+# Skill Script Format Reference
 
-## ==CATTool== Header
+## ==SkillScript== Header
 
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         tool_name
 // @description  What this tool does
 // @param        paramName  type  [required]  description
 // @grant        GM_xmlhttpRequest
 // @require      https://cdn.example.com/lib.js
 // @timeout      120
-// ==/CATTool==
+// ==/SkillScript==
 ```
 
 ## Fields
 
 ### @name (required)
 
-Tool identifier, `snake_case`. The LLM calls the tool by this name.
+Script identifier, `snake_case`. Used to identify the script within a Skill.
 
-When inside a Skill, the tool gets a `skillname__` prefix at runtime (e.g., skill `search`, tool `google` → `search__google`).
+The LLM invokes Skill Scripts via the `execute_skill_script` meta-tool, specifying the skill name and script name (e.g., skill `search`, script `google`).
 
 ### @description (recommended)
 
-Tells the LLM when to use this tool and what it returns. Be specific — this is what the LLM uses to decide whether to call the tool.
+Tells the LLM when to use this script and what it returns. Be specific — this is what the LLM uses to decide whether to invoke the script.
 
 ### @param
 
@@ -47,7 +47,7 @@ No object or array parameter types. For complex inputs, use JSON strings and par
 
 ### @grant
 
-Declares required API permissions. CATTool auth is **independent** — permissions are never inherited from the calling script.
+Declares required API permissions. Skill Script auth is **independent** — permissions are never inherited from the calling script.
 
 Common grants:
 - `GM_xmlhttpRequest` — cross-origin HTTP
@@ -57,16 +57,16 @@ Common grants:
 - `GM_openInTab` — open tabs
 - `CAT.agent.dom` — browser DOM control
 - `CAT.agent.conversation` — sub-agent conversations
-- `CAT.agent.tools` — call other CATTools
+- `CAT.agent.skills` — call other Skill Scripts
 - `CAT.agent.task` — scheduled task management
 
 ### @require
 
-External JS library URL. Downloaded and cached **at install time**, injected into the sandbox at runtime (not re-downloaded per execution).
+External JS library URL. Downloaded and cached **at Skill install time**, injected into the sandbox at runtime (not re-downloaded per execution).
 
 ### @timeout
 
-Custom execution timeout in **seconds**. Default is `30`. Use for long-running tools (e.g., web scraping, large file processing).
+Custom execution timeout in **seconds**. Default is `30`. Use for long-running scripts (e.g., web scraping, large file processing).
 
 ```js
 // @timeout 120   // 2 minutes
@@ -76,7 +76,7 @@ Custom execution timeout in **seconds**. Default is `30`. Use for long-running t
 
 ### Execution environment
 
-CATTools run in ScriptCat's Sandbox (Offscreen → Sandbox), using the same `BgExecScriptWarp` runtime as background scripts. Code is wrapped in `with(arguments[0])` for isolation.
+Skill Scripts run in ScriptCat's Sandbox (Offscreen → Sandbox), using the same `BgExecScriptWarp` runtime as background scripts. Code is wrapped in `with(arguments[0])` for isolation.
 
 ### Timeout
 
@@ -84,7 +84,7 @@ Default **30-second** timeout enforced via `Promise.race()`. Customizable via `@
 
 ### args object
 
-Contains all LLM-provided parameters, auto-converted per `@param` type definitions:
+Contains all parameters (from LLM or programmatic call), auto-converted per `@param` type definitions:
 
 ```js
 const { keyword, maxCount, verbose } = args;

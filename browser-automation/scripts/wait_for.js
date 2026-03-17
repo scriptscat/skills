@@ -1,11 +1,11 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         wait_for
 // @description  Wait for an element matching the CSS selector to appear in the DOM. Returns element info (tagName, text, id, className) on success, or an error on timeout.
 // @param        selector string [required] CSS selector of the element to wait for
 // @param        tabId number Target tab ID (defaults to the active tab)
 // @param        timeout number Timeout in milliseconds (default: 10000)
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 try {
   const selector = args.selector;

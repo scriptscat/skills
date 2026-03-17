@@ -1,11 +1,11 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         navigate
 // @description  Navigate a tab to the specified URL. Returns the final URL and tabId after navigation.
 // @param        url string [required] Target URL (must start with http:// or https://)
 // @param        tabId number Target tab ID (defaults to the active tab)
 // @param        waitUntil boolean Whether to wait for page load to complete (default: true)
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 try {
   // URL 格式校验

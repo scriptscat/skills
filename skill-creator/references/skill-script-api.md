@@ -1,27 +1,27 @@
-# CATTool API Reference
+# Skill Script API Reference
 
 ## Metadata header
 
 ```js
-// ==CATTool==
+// ==SkillScript==
 // @name         tool_name
 // @description  What this tool does
 // @param        paramName  type  [required]  description
 // @grant        GM_xmlhttpRequest
 // @require      https://cdn.example.com/lib.js
 // @timeout      120
-// ==/CATTool==
+// ==/SkillScript==
 ```
 
 ### @name (required)
 
-Tool identifier, snake_case. The LLM calls the tool by this name.
+Script identifier, snake_case. The LLM invokes this script via the `execute_skill_script` meta-tool by passing the skill name and script name.
 
-When inside a Skill, the tool gets a `skillname__` prefix at runtime (e.g., skill `search` tool `google` → `search__google`).
+For example, a script named `google` in skill `search` is invoked as `execute_skill_script(skill="search", script="google", params={...})`.
 
 ### @description (recommended)
 
-Tells the LLM when to use this tool and what it returns. Be specific — this is what the LLM uses to decide whether to call the tool.
+Tells the LLM when to use this script and what it returns. Be specific — this is what the LLM uses to decide whether to invoke the script.
 
 ### @param
 
@@ -43,7 +43,7 @@ Parameter definition: `paramName type [required] description`
 
 ### @grant
 
-Declares required API permissions. CATTool auth is **independent** — permissions are never inherited from the calling script.
+Declares required API permissions. Skill Script auth is **independent** — permissions are never inherited from the calling script.
 
 ### @require
 
@@ -51,7 +51,7 @@ External JS library URL. Downloaded and cached **at install time**, injected int
 
 ### @timeout
 
-Custom execution timeout in **seconds**. Default is `30`. Use this for long-running tools (e.g., web scraping, large file processing).
+Custom execution timeout in **seconds**. Default is `30`. Use this for long-running scripts (e.g., web scraping, large file processing).
 
 ```js
 // @timeout 120   // 2 minutes
@@ -61,7 +61,7 @@ Custom execution timeout in **seconds**. Default is `30`. Use this for long-runn
 
 ### Execution environment
 
-CATTools run in ScriptCat's Sandbox (Offscreen → Sandbox), using the same `BgExecScriptWarp` runtime as background scripts. Code is wrapped in `with(arguments[0])` for isolation.
+Skill Scripts run in ScriptCat's Sandbox (Offscreen → Sandbox), using the same `BgExecScriptWarp` runtime as background scripts. Code is wrapped in `with(arguments[0])` for isolation.
 
 ### Timeout
 
@@ -85,7 +85,7 @@ return { price: 99.5, currency: "CNY", inStock: true };
 
 ### Returning attachments
 
-CATTools can return binary attachments (images, files, audio) alongside text results. Return a `ToolResultWithAttachments` object:
+Skill Scripts can return binary attachments (images, files, audio) alongside text results. Return a `ToolResultWithAttachments` object:
 
 ```js
 return {
@@ -262,16 +262,18 @@ CAT.agent.task.addListener(task.id, (trigger) => {
 });
 ```
 
-### CAT.agent.tools
+### CAT.agent.skills.call
 
-Call other installed CATTools:
+Programmatically invoke another Skill's script:
 
 ```js
-// @grant CAT.agent.tools
-const result = await CAT.agent.tools.call("other_tool", { param: "value" });
+// @grant CAT.agent.skills
+const result = await CAT.agent.skills.call("skill-name", "script_name", { param: "value" });
 ```
+
+Arguments: `call(skillName, scriptName, params?)` — `skillName` is the target Skill's name, `scriptName` is the `@name` of the script within that Skill, and `params` is an optional object of parameters.
 
 ## Notes
 
 - Permissions are verified per-execution via `@grant` declarations. Sensitive operations may trigger a user confirmation dialog.
-- `@param` definitions automatically map to JSON Schema for LLM function calling — you don't need to write schemas manually.
+- `@param` definitions automatically map to JSON Schema for the `execute_skill_script` meta-tool — you don't need to write schemas manually.

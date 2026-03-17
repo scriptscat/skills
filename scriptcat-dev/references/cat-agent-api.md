@@ -1,6 +1,6 @@
 # CAT.agent.* API Reference
 
-Access via `@grant CAT.agent.conversation`, `@grant CAT.agent.dom`, `@grant CAT.agent.tools`, `@grant CAT.agent.task`.
+Access via `@grant CAT.agent.conversation`, `@grant CAT.agent.dom`, `@grant CAT.agent.skills`, `@grant CAT.agent.task`.
 
 ## CAT.agent.conversation
 
@@ -355,61 +355,64 @@ if (status.hasChanges) {
 }
 ```
 
-## CAT.agent.tools
+## CAT.agent.skills
 
-Manage and call CATTools programmatically.
-
-### install
-
-```typescript
-CAT.agent.tools.install(code: string): Promise<CATToolRecord>
-```
-
-Install a CATTool from its full source code (including `==CATTool==` header).
-
-### remove
-
-```typescript
-CAT.agent.tools.remove(name: string): Promise<boolean>
-```
+Manage Skills and call Skill Scripts programmatically.
 
 ### list
 
 ```typescript
-CAT.agent.tools.list(): Promise<CATToolRecord[]>
+CAT.agent.skills.list(): Promise<SkillSummary[]>
 ```
 
 ```typescript
-interface CATToolRecord {
-  id: string;
+interface SkillSummary {
   name: string;
   description: string;
-  params: CATToolParam[];
-  grants: string[];
-  requires?: string[];
-  code: string;
-  sourceScriptUuid?: string;
-  sourceScriptName?: string;
+  toolNames: string[];
+  referenceNames: string[];
+  hasConfig?: boolean;
   installtime: number;
   updatetime: number;
 }
+```
 
-interface CATToolParam {
-  name: string;
-  type: "string" | "number" | "boolean";
-  required: boolean;
-  description: string;
-  enum?: string[];
-}
+### get
+
+```typescript
+CAT.agent.skills.get(name: string): Promise<SkillRecord | null>
+```
+
+### install
+
+```typescript
+CAT.agent.skills.install(
+  skillMd: string,
+  scripts?: Array<{ name: string; code: string }>,
+  references?: Array<{ name: string; content: string }>
+): Promise<SkillRecord>
+```
+
+### remove
+
+```typescript
+CAT.agent.skills.remove(name: string): Promise<boolean>
 ```
 
 ### call
 
 ```typescript
-CAT.agent.tools.call(name: string, params?: Record<string, unknown>): Promise<unknown>
+CAT.agent.skills.call(skillName: string, scriptName: string, params?: Record<string, unknown>): Promise<unknown>
 ```
 
-Call an installed CATTool and get its return value.
+Call a Skill Script by specifying the skill name and script name within that skill. Returns the script's return value.
+
+**Example:**
+
+```js
+// @grant CAT.agent.skills
+const result = await CAT.agent.skills.call("search", "google", { keyword: "scriptcat" });
+```
 
 ## CAT.agent.task
 

@@ -1,11 +1,11 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         browser_action
 // @description  Analyze page content using a sub-agent — returns CSS selectors, extracted data, or action suggestions. Does NOT perform any clicks or form fills. Pass a specific scenario describing what to find or extract (e.g. "find the search input and submit button selectors", "extract the first 5 search results with titles and links").
 // @param        scenario string [required] What to analyze or extract from the page — be specific
 // @param        tabId number Target tab ID (defaults to the active tab)
 // @grant        CAT.agent.conversation
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 const SYSTEM_PROMPT = `你是一个页面分析专家。你的任务是读取和分析页面内容，返回精简的结果给调用者。
 

@@ -1,6 +1,6 @@
 # Skill Config Examples
 
-Examples demonstrating the **Skill Config** feature — declaring configuration fields in `SKILL.md` frontmatter and accessing them via `CAT_CONFIG` in CATTool scripts.
+Examples demonstrating the **Skill Config** feature — declaring configuration fields in `SKILL.md` frontmatter and accessing them via `CAT_CONFIG` in Skill Script scripts.
 
 ## Skills
 
@@ -29,7 +29,7 @@ config:
 ---
 ```
 
-### 2. Access in CATTool scripts
+### 2. Access in Skill Scripts
 
 ```javascript
 const apiKey = CAT_CONFIG.API_KEY;

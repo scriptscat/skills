@@ -1,9 +1,9 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         web_search
 // @description  Search the web via SerpAPI and return top results with titles, snippets, and URLs
 // @param        query string [required] The search query
 // @grant        GM_xmlhttpRequest
-// ==/CATTool==
+// ==/SkillScript==
 
 const apiKey = CAT_CONFIG.SERP_API_KEY;
 if (!apiKey) {

@@ -183,7 +183,7 @@ Don't just say "see references/" — state the exact condition that should promp
 
 1. **SKILL.md is a prompt, not documentation** — write as instructions for the Agent ("You now have tools to..."), not as a reference for humans ("This Skill provides...")
 2. **Description triggers everything** — 30-80 words, specific keywords, list trigger scenarios
-3. **Tools should be self-contained** — each CATTool declares its own @grant and works independently
+3. **Scripts should be self-contained** — each Skill Script declares its own @grant and works independently
 4. **Show input → output in tool tables** — don't just repeat @description
 5. **Branch in workflows** — real tasks have conditions; a flat numbered list isn't enough
 6. **Examples teach better than rules** — `→`/`←` compact format, cover diverse scenarios

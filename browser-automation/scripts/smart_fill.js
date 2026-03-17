@@ -1,4 +1,4 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         smart_fill
 // @description  Fill a form field using CDP trusted input and verify the value afterwards. Use this instead of execute_script for form filling — it triggers proper input/change events that frameworks (React, Vue) can detect.
 // @param        selector string [required] CSS selector of the form element
@@ -6,7 +6,7 @@
 // @param        tabId number [required] Target tab ID
 // @param        checkDelay number Delay before verification in ms (default: 500)
 // @grant        CAT.agent.dom
-// ==/CATTool==
+// ==/SkillScript==
 
 const checkDelay = args.checkDelay || 500;
 const escapedSelector = JSON.stringify(args.selector);

@@ -1,13 +1,13 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         generate_script
-// @description  Generate or modify ScriptCat UserScript or CATTool code using a coding sub-agent. Requires a confirmed technical approach from analyze_feasibility. Returns ready-to-install .js file attachments. Pass existing_code when modifying a previously generated script.
+// @description  Generate or modify ScriptCat UserScript or Skill Script code using a coding sub-agent. Requires a confirmed technical approach from analyze_feasibility. Returns ready-to-install .js file attachments. Pass existing_code when modifying a previously generated script.
 // @param        spec           string  [required]  What the script should do: functional requirements, target sites, trigger conditions, and any user preferences. When modifying, describe what to change.
 // @param        approach       string  [required]  Technical approach confirmed by analyze_feasibility and approved by the user: script type(s), APIs to use, implementation strategy. Do NOT fabricate — must come from a prior analyze_feasibility call.
 // @param        name           string  Desired script/tool name (optional, sub-agent will choose if omitted).
 // @param        existing_code  string  Existing script code to modify. When provided, the sub-agent refines this code instead of writing from scratch. For multi-script, join with SCRIPT_SEPARATOR.
 // @grant        CAT.agent.conversation
 // @timeout      120
-// ==/CATTool==
+// ==/SkillScript==
 
 const { spec, approach, name, existing_code } = args;
 
@@ -25,13 +25,13 @@ Use \`read_reference\` to look up API signatures, coding rules, and patterns:
 - **coding-patterns.md** — Header formats, coding rules, and common code patterns (READ THIS FIRST)
 - **scriptcat.d.ts** — TypeScript definitions for all GM APIs and CAT.agent.* APIs
 - **userscript-api.md** — GM_* / GM.* API documentation
-- **cattool-format.md** — CATTool metadata format and runtime behavior
-- **cat-agent-api.md** — CAT.agent.dom, conversation, tools, task APIs
+- **skillscript-format.md** — Skill Script metadata format and runtime behavior
+- **cat-agent-api.md** — CAT.agent.dom, conversation, skills, task APIs
 
 ## Code Quality Requirements
 
 ### Error Handling
-- CATTool: wrap main logic in try-catch; return \`{ error: "descriptive message" }\` on failure
+- Skill Script: wrap main logic in try-catch; return \`{ error: "descriptive message" }\` on failure
 - Network requests: handle HTTP errors (non-2xx), timeouts, and malformed responses
 - DOM operations: null-check elements before accessing properties
 - JSON parsing: always wrap \`JSON.parse\` in try-catch
@@ -53,7 +53,7 @@ if (!items) return { error: "Unexpected response shape — missing data.items" }
 - Validate critical data before use — don't assume API responses have the expected shape
 - Use sensible defaults for optional data
 - UserScript: clean up resources (disconnect MutationObservers, clear intervals) when appropriate
-- CATTool: keep return data concise — summarize rather than dumping raw HTML/JSON
+- Skill Script: keep return data concise — summarize rather than dumping raw HTML/JSON
 
 ### @grant Completeness
 Every API call in the code MUST have a matching \`@grant\` in the header. Missing grants cause silent \`undefined\` at runtime.
@@ -94,7 +94,7 @@ When existing code is provided:
 - Output ONLY raw JavaScript code — no markdown, no prose
 - If generating **multiple scripts**, separate them with: \`// ===SCRIPT_SEPARATOR===\`
 - UserScript: start with \`// ==UserScript==\`, include @name, @namespace (https://scriptcat.org/), @version (1.0.0), @description, @author, @match/@crontab/@background, @grant for every API
-- CATTool: start with \`// ==CATTool==\`, @name (snake_case), @description, @param lines, @grant for every API`;
+- Skill Script: start with \`// ==SkillScript==\`, @name (snake_case), @description, @param lines, @grant for every API`;
 
 let userMessage = "";
 if (name) userMessage += `Script/tool name: ${name}\n\n`;
@@ -151,11 +151,11 @@ if (scriptParts.length === 0) {
 }
 
 // Validate: every script must have a recognizable header
-const headerPattern = /\/\/\s*==(UserScript|CATTool)==/;
+const headerPattern = /\/\/\s*==(UserScript|SkillScript)==/;
 const warnings = [];
 for (let i = 0; i < scriptParts.length; i++) {
   if (!headerPattern.test(scriptParts[i])) {
-    warnings.push(`Script ${i + 1} is missing a ==UserScript== or ==CATTool== header`);
+    warnings.push(`Script ${i + 1} is missing a ==UserScript== or ==SkillScript== header`);
   }
 }
 
@@ -165,10 +165,10 @@ const summaryLines = [];
 for (const scriptCode of scriptParts) {
   const nameMatch = scriptCode.match(/\/\/\s*@name\s+(.+)/);
   const descMatch = scriptCode.match(/\/\/\s*@description\s+(.+)/);
-  const isCATTool = /==CATTool==/.test(scriptCode);
+  const isSkillScript = /==SkillScript==/.test(scriptCode);
   const scriptName = nameMatch ? nameMatch[1].trim() : "script";
   const fileName = scriptName.replace(/\s+/g, "_").toLowerCase() + ".js";
-  const type = isCATTool ? "CATTool" : "UserScript";
+  const type = isSkillScript ? "Skill Script" : "UserScript";
   const lines = scriptCode.split("\n").length;
 
   let summary = `**${scriptName}** (${type}, ${lines} lines)`;

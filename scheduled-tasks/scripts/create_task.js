@@ -1,4 +1,4 @@
-// ==CATTool==
+// ==SkillScript==
 // @name         create_task
 // @description  Create a scheduled task. Supports internal (LLM auto-executes) and event (notifies script) modes
 // @param        name string [required] Task name
@@ -10,7 +10,7 @@
 // @param        skills string Skill loading strategy: "auto"=load all, or comma-separated skill names
 // @param        maxIterations number Max tool-call rounds for LLM in internal mode, default 10
 // @grant        CAT.agent.task
-// ==/CATTool==
+// ==/SkillScript==
 
 const options = {
   name: args.name,
