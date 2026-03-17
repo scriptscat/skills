@@ -20,7 +20,6 @@ Code examples for the Agent script API, located in [`examples/`](./examples/):
 |-----------|-------------|
 | [conversation](./examples/conversation/) | Conversation API — chat, streaming, tool calling |
 | [dom](./examples/dom/) | DOM API — page reading, form filling, tab management |
-| [tools](./examples/tools/) | Skill Scripts — writing and using custom scripts within a Skill |
 | [config](./examples/config/) | Skill Config — declare config fields, access via `CAT_CONFIG` |
 | [page_copilot.user.js](./examples/page_copilot.user.js) | Full userscript — right-click AI assistant with streaming UI |
 

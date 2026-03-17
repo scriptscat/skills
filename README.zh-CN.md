@@ -18,7 +18,6 @@ Agent 脚本 API 代码示例，位于 [`examples/`](./examples/)：
 |------|------|
 | [conversation](./examples/conversation/) | 对话 API — 聊天、流式输出、工具调用 |
 | [dom](./examples/dom/) | DOM API — 页面读取、表单填写、标签页管理 |
-| [tools](./examples/tools/) | Skill 脚本 — 在 Skill 中编写和使用自定义脚本 |
 | [config](./examples/config/) | Skill 配置 — 声明配置字段，通过 `CAT_CONFIG` 访问 |
 | [page_copilot.user.js](./examples/page_copilot.user.js) | 完整用户脚本 — 右键唤起的 AI 网页助手 |
 
