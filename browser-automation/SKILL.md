@@ -1,6 +1,6 @@
 ---
 name: browser-automation
-description: Browser automation — analyze pages with a sub-agent, then perform DOM operations (click, fill, navigate, screenshot, scroll)
+description: Browser automation — analyze pages with a sub-agent, then perform DOM operations (click, fill, navigate, screenshot, scroll). Use when the user wants to interact with web pages, fill forms, extract data, or automate browser tasks.
 ---
 
 # Browser Automation Skill
@@ -13,11 +13,12 @@ You now have tools to control the browser. They are split into **primitive tools
 
 | Tool | What it does |
 |------|-------------|
-| `list_tabs` | List all open tabs → find the `tabId` you need |
 | `navigate` | Go to a URL |
 | `screenshot` | Capture a screenshot (returned as image attachment) |
 | `scroll` | Scroll up/down/top/bottom, returns position + atTop/atBottom flags |
 | `wait_for` | Wait for a CSS selector to appear in the DOM |
+
+> **Note:** Use the built-in `list_tabs` tool (always available) to find tabIds — this Skill does not provide its own.
 
 ### Compound Tools
 

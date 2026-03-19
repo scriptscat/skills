@@ -17,11 +17,50 @@ Skills load progressively: the Agent always sees each Skill's name + description
 
 Read `references/scriptcat.d.ts` for full type definitions of all CAT APIs.
 
+### Agent built-in tools
+
+The Agent already has these tools **without any Skill**. Don't create Skill Scripts that duplicate them — instead, design Skills that complement or orchestrate them.
+
+| Tool | What it does |
+|------|-------------|
+| `web_fetch` | Fetch a URL, return text content (with optional LLM prompt to summarize) |
+| `web_search` | Search the web, return results with title/URL/snippet |
+| `get_tab_content` | Read a browser tab's rendered content as cleaned markdown |
+| `list_tabs` | List open tabs (filterable by URL/title pattern) |
+| `open_tab` / `close_tab` / `activate_tab` | Tab management |
+| `execute_script` | Execute JS in a page tab or sandbox (30s timeout) |
+| `opfs_write` / `opfs_read` / `opfs_list` / `opfs_delete` | Workspace file system |
+| `ask_user` | Ask the user a question (free text or structured choices, 5min timeout) |
+| `agent` | Spawn a sub-agent for independent subtasks (no ask_user, no nested sub-agents) |
+| `create_task` / `get_task` / `update_task` / `list_tasks` / `delete_task` | Task tracking |
+| `load_skill` / `execute_skill_script` / `read_reference` | Skill meta-tools |
+
+**Common scenarios & tool combinations:**
+
+| Scenario | Tools / approach | Why |
+|----------|-----------------|-----|
+| Read a page and extract structured data | `get_tab_content` (with `prompt`) → LLM parses | Built-in, no Skill Script needed |
+| Fill a multi-step form | `get_tab_content` → `execute_script` per field → `execute_script` submit | Built-in combo; consider a Skill Script if the form logic is complex or reusable |
+| Download a binary file and process it | Skill Script: `fetch()` → `CAT.agent.opfs.write(blob)` | `web_fetch` is text-only; binary needs Skill Script with `@grant CAT.agent.opfs` |
+| Call an authenticated third-party API | Skill Script with `GM_xmlhttpRequest` + `CAT_CONFIG` for API key | `web_fetch` has no auth header support; `GM_xmlhttpRequest` does |
+| Monitor a page for changes periodically | Skill Script with `CAT.agent.task` (internal mode, cron) + `CAT.agent.dom` | Needs scheduled execution + DOM access — both require `@grant` |
+| Batch-process multiple tabs | `list_tabs` → `agent` (sub-agent) per tab | Built-in parallel processing; Skill just provides the orchestration prompt |
+| Save user preferences across sessions | Skill Script with `GM.getValue` / `GM.setValue` | `opfs_*` is for files; key-value persistence needs GM storage |
+| Generate content with a specialized sub-agent | Skill Script with `CAT.agent.conversation` (ephemeral + scoped skills) | Custom system prompt + tool set requires conversation API |
+| Search the web and summarize results | `web_search` → `web_fetch` (with `prompt`) per result | Fully built-in, no Skill Script needed |
+| Take a screenshot and annotate it | `execute_script` (screenshot via page API) or Skill Script with `CAT.agent.dom.screenshot` + `saveTo` | Simple screenshot = built-in; annotation/processing = Skill Script |
+
+**Key implication:** A Skill Script should only be created when:
+- The built-in tools can't do the job (e.g., cross-origin HTTP via `GM_xmlhttpRequest`, persistent storage via `GM.getValue`, binary downloads)
+- You need to **encapsulate complex logic** that would be error-prone as raw `execute_script` code
+- The operation requires specific `@grant` permissions (e.g., `CAT.agent.dom`, `CAT.agent.conversation`, `CAT.agent.task`)
+- The workflow is **reusable** — if the same multi-step logic will be triggered repeatedly, packaging it as a Skill Script is cleaner than relying on the LLM to reconstruct it each time
+
 ## Creating a new Skill
 
 ### Step 1: Interview
 
-Before writing anything, understand what the user actually needs.
+Before writing anything, understand what the user actually needs. Use `ask_user` to clarify ambiguities — it supports structured choices (single/multi-select) which are much better than open-ended questions for narrowing down options.
 
 If the user's request is already specific (clear problem, scope, and capabilities), confirm your understanding in one sentence and go straight to Step 2. Don't ask questions you already know the answer to.
 
@@ -181,7 +220,7 @@ Keep the body under 500 lines. The `browser-automation` Skill in `references/ski
 Skill Scripts are JS files in `scripts/` with a `==SkillScript==` metadata header. Read `references/skill-script-api.md` for the full spec.
 
 Key facts:
-- Runs in ScriptCat Sandbox with **30-second timeout**
+- Runs in ScriptCat Sandbox with **300-second (5-minute) timeout**
 - Parameters via `args` object, results via `return` (auto JSON-serialized)
 - Top-level `await` supported
 - Full GM API + CAT API access via `@grant` (independent auth, not inherited)
@@ -241,14 +280,14 @@ return { title: page.title, url: page.url, content: page.html };
 // @grant        CAT.agent.dom
 // ==/SkillScript==
 
-const screenshot = await CAT.agent.dom.takeScreenshot();
+const result = await CAT.agent.dom.screenshot();
 return {
   content: "Screenshot captured.",
   attachments: [{
     type: "image",
-    name: "screenshot.png",
-    mimeType: "image/png",
-    data: screenshot  // base64 data-URL or Blob
+    name: "screenshot.jpg",
+    mimeType: "image/jpeg",
+    data: result.dataUrl  // base64 data-URL string
   }]
 };
 ```
@@ -353,6 +392,24 @@ Identify the category of problem:
 - **Unclear prompt** — Agent doesn't follow the intended workflow → rewrite the SKILL.md body with clearer instructions, better examples, or explicit branching
 - **Missing capability** — Skill can't do something it should → add a new Skill Script or reference
 
+Use this checklist to systematically review the Skill:
+
+#### Optimization checklist
+
+- **Description trigger precision**: Does the description (30-80 words) cover typical user phrasings? Does it false-trigger on unrelated prompts? Check both positive and negative triggers.
+- **Built-in tool overlap**: Does any Skill Script duplicate `web_fetch`, `list_tabs`, `execute_script`, or other built-in tools? If so, remove it and reference the built-in in SKILL.md instead.
+- **Tool granularity**: Is there a mega-script doing too many things? Split into focused single-responsibility scripts. Conversely, are there too many tiny scripts that should be one?
+- **Prompt workflow**: Does the SKILL.md have clear branching logic? Are error/edge-case paths covered, or only the happy path?
+- **Examples**: Are there input→output examples? Do they cover the main scenarios (including error cases)?
+- **Error handling**: Do scripts return `{ error: "..." }` rather than throwing? Does SKILL.md guide the Agent on how to handle errors?
+- **References usage**: Is the SKILL.md body over 500 lines? Should large docs move to `references/` for on-demand loading?
+
+#### Common optimization patterns
+
+- **Outdated documentation** — API signatures or parameter descriptions in SKILL.md don't match actual Skill Script `@param` headers → sync them
+- **Description keyword gaps** — add trigger phrases the user would naturally say (e.g., "fill forms" for browser-automation) while keeping the description under 80 words
+- **Built-in tool hints** — when a workflow uses both built-in tools and Skill Scripts, explicitly state in SKILL.md which steps use built-in tools (e.g., "Use the built-in `list_tabs` tool to find tabIds")
+
 ### 3. Targeted edits
 
 Fix only what's broken. Don't rewrite the entire Skill when a description tweak or one tool fix would solve the problem. Show the user a before/after diff of what you changed and why.
@@ -361,7 +418,7 @@ Fix only what's broken. Don't rewrite the entire Skill when a description tweak 
 
 Use `read_reference` to load these when the specific condition applies:
 
-- **`scriptcat.d.ts`** — read when you need exact API signatures, method parameters, or return types for `CAT.agent.dom`, `CAT.agent.task`, `CAT.agent.conversation`, `CAT.agent.skills`, or `CAT_CONFIG`. This is the authoritative source of truth.
+- **`scriptcat.d.ts`** — read when you need exact API signatures, method parameters, or return types for `CAT.agent.conversation`, `CAT.agent.dom`, `CAT.agent.task`, `CAT.agent.skills`, `CAT.agent.model`, `CAT.agent.opfs`, or `CAT_CONFIG`. This is the authoritative source of truth.
 - **`skill-script-api.md`** — read when writing Skill Scripts and you need to check metadata syntax (`@param`, `@grant`, `@timeout`, `@require`), return format details (especially attachments), or GM API usage patterns.
 - **`skill-examples.md`** — read when deciding how to structure a SKILL.md prompt, or when you want to show the user what a well-written Skill looks like. Contains analysis of the `browser-automation` Skill and design pattern templates (prompt-only, tool-set, references-based).
 

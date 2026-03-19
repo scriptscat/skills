@@ -9,7 +9,7 @@
 // @param        paramName  type  [required]  description
 // @grant        GM_xmlhttpRequest
 // @require      https://cdn.example.com/lib.js
-// @timeout      120
+
 // ==/SkillScript==
 ```
 
@@ -66,7 +66,7 @@ External JS library URL. Downloaded and cached **at Skill install time**, inject
 
 ### @timeout
 
-Custom execution timeout in **seconds**. Default is `30`. Use for long-running scripts (e.g., web scraping, large file processing).
+Custom execution timeout in **seconds**. Use for scripts that need a shorter or longer limit.
 
 ```js
 // @timeout 120   // 2 minutes
@@ -80,7 +80,7 @@ Skill Scripts run in ScriptCat's Sandbox (Offscreen → Sandbox), using the same
 
 ### Timeout
 
-Default **30-second** timeout enforced via `Promise.race()`. Customizable via `@timeout` (in seconds). After timeout, resources are cleaned up and an error is thrown.
+Customizable via `@timeout` (in seconds). After timeout, resources are cleaned up and an error is thrown.
 
 ### args object
 

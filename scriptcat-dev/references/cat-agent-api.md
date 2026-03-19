@@ -1,6 +1,6 @@
 # CAT.agent.* API Reference
 
-Access via `@grant CAT.agent.conversation`, `@grant CAT.agent.dom`, `@grant CAT.agent.skills`, `@grant CAT.agent.task`.
+Access via `@grant CAT.agent.conversation`, `@grant CAT.agent.dom`, `@grant CAT.agent.skills`, `@grant CAT.agent.task`, `@grant CAT.agent.model`, `@grant CAT.agent.opfs`.
 
 ## CAT.agent.conversation
 
@@ -21,6 +21,8 @@ interface ConversationCreateOptions {
   model?: string;           // Model ID override
   maxIterations?: number;   // Max tool-use iterations
   skills?: "auto" | string[];  // Skills to load: "auto" = all, or specific names
+  tools?: ToolDefinition[];    // Inline tools with handlers
+  commands?: Record<string, CommandHandler>;  // Custom slash-command handlers (e.g. { "/reset": handler })
   ephemeral?: boolean;      // Memory-only, no persistence, no built-in tools/skills
   cache?: boolean;          // Enable prompt caching (default: true)
 }
@@ -210,16 +212,22 @@ interface PageContent {
 ### screenshot
 
 ```typescript
-CAT.agent.dom.screenshot(options?: ScreenshotOptions): Promise<string>
+CAT.agent.dom.screenshot(options?: ScreenshotOptions): Promise<ScreenshotResult>
 ```
-
-Returns a base64 data-URL string.
 
 ```typescript
 interface ScreenshotOptions {
   tabId?: number;
   quality?: number;       // JPEG quality 0-100
   fullPage?: boolean;     // Capture full scrollable page
+  selector?: string;      // CSS selector to capture a specific element
+  saveTo?: string;        // OPFS workspace path to save the screenshot
+}
+
+interface ScreenshotResult {
+  dataUrl: string;        // Base64 data-URL string
+  path?: string;          // OPFS path (when saveTo is used)
+  size?: number;          // File size in bytes (when saveTo is used)
 }
 ```
 
@@ -310,6 +318,7 @@ Executes JavaScript in the page context and returns the result.
 ```typescript
 interface ExecuteScriptOptions {
   tabId?: number;
+  world?: "MAIN" | "ISOLATED";  // Script execution world. Default: ISOLATED
 }
 ```
 
@@ -469,7 +478,7 @@ CAT.agent.task.remove(id: string): Promise<boolean>
 CAT.agent.task.runNow(id: string): Promise<void>
 ```
 
-Trigger a task immediately, regardless of its cron schedule.
+Trigger a task immediately, regardless of its cron schedule. The task must be enabled.
 
 ### addListener / removeListener
 
@@ -518,4 +527,98 @@ interface AgentTask {
   createtime: number;
   updatetime: number;
 }
+```
+
+## CAT.agent.model
+
+Query configured LLM models (read-only, apiKey excluded).
+
+### list
+
+```typescript
+CAT.agent.model.list(): Promise<ModelSummary[]>
+```
+
+### get
+
+```typescript
+CAT.agent.model.get(id: string): Promise<ModelSummary | null>
+```
+
+### getDefault
+
+```typescript
+CAT.agent.model.getDefault(): Promise<string>
+```
+
+Returns the default model ID, or empty string if none set.
+
+### ModelSummary
+
+```typescript
+interface ModelSummary {
+  id: string;              // Unique model config ID
+  name: string;            // Display name (e.g. "GPT-4o", "Claude Sonnet")
+  provider: "openai" | "anthropic";
+  apiBaseUrl: string;      // API base URL
+  model: string;           // Model identifier sent to provider API
+  maxTokens?: number;      // Max output tokens (omitted if unset)
+}
+```
+
+## CAT.agent.opfs
+
+Workspace file system operations. All paths are relative to `agents/workspace/` in OPFS.
+
+### write
+
+```typescript
+CAT.agent.opfs.write(path: string, content: string | Blob): Promise<WriteResult>
+```
+
+Creates parent directories automatically. Accepts string, Blob, or data URL.
+
+```typescript
+interface WriteResult {
+  path: string;    // Sanitized path
+  size: number;    // Size in bytes
+}
+```
+
+### read
+
+```typescript
+CAT.agent.opfs.read(path: string, format?: "text" | "bloburl"): Promise<ReadResult>
+```
+
+Use `format: "bloburl"` to get a blob URL for binary files.
+
+```typescript
+interface ReadResult {
+  path: string;
+  content?: string;    // Text content (when format is "text" or omitted)
+  blobUrl?: string;    // Blob URL (when format is "bloburl")
+  size: number;
+  mimeType?: string;   // Detected MIME type (when format is "bloburl")
+}
+```
+
+### list
+
+```typescript
+CAT.agent.opfs.list(path?: string): Promise<FileEntry[]>
+```
+
+```typescript
+interface FileEntry {
+  name: string;
+  type: "file" | "directory";
+  size?: number;    // Only for files
+}
+```
+
+### delete
+
+```typescript
+CAT.agent.opfs.delete(path: string): Promise<{ success: true }>
 ```

@@ -51,7 +51,7 @@ External JS library URL. Downloaded and cached **at install time**, injected int
 
 ### @timeout
 
-Custom execution timeout in **seconds**. Default is `30`. Use this for long-running scripts (e.g., web scraping, large file processing).
+Custom execution timeout in **seconds**. Default is `300` (5 minutes). Use this for scripts that need a shorter or longer limit.
 
 ```js
 // @timeout 120   // 2 minutes
@@ -65,7 +65,7 @@ Skill Scripts run in ScriptCat's Sandbox (Offscreen → Sandbox), using the same
 
 ### Timeout
 
-Default **30-second** timeout enforced via `Promise.race()`. Customizable via `@timeout` (in seconds). After timeout, resources are cleaned up and an error is thrown.
+Default **300-second** (5-minute) timeout enforced via `Promise.race()`. Customizable via `@timeout` (in seconds). After timeout, resources are cleaned up and an error is thrown.
 
 ### args object
 
@@ -202,7 +202,55 @@ GM.openInTab("https://example.com", { active: true });
 
 ## CAT Agent APIs
 
-Available via `@grant CAT.agent.dom`, `@grant CAT.agent.task`, etc.
+Available via `@grant CAT.agent.conversation`, `@grant CAT.agent.dom`, `@grant CAT.agent.task`, `@grant CAT.agent.skills`, `@grant CAT.agent.model`, `@grant CAT.agent.opfs`.
+
+### CAT.agent.conversation
+
+Create sub-agent conversations with LLM, supporting tools, skills, and streaming:
+
+```js
+// @grant CAT.agent.conversation
+
+// Create a conversation
+const conv = await CAT.agent.conversation.create({
+  system: "You are a helpful assistant.",
+  model: "model-id",          // optional, uses default model if omitted
+  maxIterations: 20,           // max tool-calling loops, default 20
+  skills: "auto",              // "auto" loads all skills, or ["skill-name"]
+  tools: [{                    // inline tools with handlers
+    name: "lookup",
+    description: "Look up a value",
+    parameters: { type: "object", properties: { key: { type: "string" } } },
+    handler: async (args) => ({ value: "result" }),
+  }],
+  commands: { "/reset": async (args, conv) => { await conv.clear(); return "Cleared."; } },
+  ephemeral: false,            // true = in-memory only, no persistence, no built-in tools
+  cache: true,                 // prompt caching, default true
+});
+
+// Non-streaming chat
+const reply = await conv.chat("Hello!");
+// reply: { content, thinking?, toolCalls?, usage? }
+
+// Streaming chat
+const stream = await conv.chatStream("Summarize this page.");
+for await (const chunk of stream) {
+  // chunk.type: "content_delta" | "thinking_delta" | "tool_call" | "content_block" | "done" | "error"
+  if (chunk.type === "content_delta") console.log(chunk.content);
+}
+
+// Get message history
+const messages = await conv.getMessages();
+
+// Clear messages
+await conv.clear();
+
+// Persist conversation
+await conv.save();
+
+// Retrieve an existing conversation
+const existing = await CAT.agent.conversation.get("conversation-id");
+```
 
 ### CAT.agent.dom
 
@@ -272,6 +320,51 @@ const result = await CAT.agent.skills.call("skill-name", "script_name", { param:
 ```
 
 Arguments: `call(skillName, scriptName, params?)` — `skillName` is the target Skill's name, `scriptName` is the `@name` of the script within that Skill, and `params` is an optional object of parameters.
+
+### CAT.agent.model
+
+Query configured LLM models (read-only, apiKey excluded for security):
+
+```js
+// @grant CAT.agent.model
+
+// List all configured models
+const models = await CAT.agent.model.list();
+// models: [{ id, name, provider, apiBaseUrl, model, maxTokens? }]
+
+// Get a specific model by ID
+const model = await CAT.agent.model.get("model-id");
+
+// Get the default model ID
+const defaultId = await CAT.agent.model.getDefault();
+```
+
+### CAT.agent.opfs
+
+Workspace file system operations. All paths are relative to `agents/workspace/` in OPFS:
+
+```js
+// @grant CAT.agent.opfs
+
+// Write a file (string, Blob, or data URL)
+const writeResult = await CAT.agent.opfs.write("reports/daily.txt", "Report content...");
+// writeResult: { path, size }
+
+// Read a file as text
+const readResult = await CAT.agent.opfs.read("reports/daily.txt");
+// readResult: { path, content, size }
+
+// Read a binary file as blob URL
+const blobResult = await CAT.agent.opfs.read("images/chart.png", "bloburl");
+// blobResult: { path, blobUrl, size, mimeType }
+
+// List files and directories
+const entries = await CAT.agent.opfs.list("reports/");
+// entries: [{ name, type: "file"|"directory", size? }]
+
+// Delete a file or directory
+await CAT.agent.opfs.delete("reports/old.txt");
+```
 
 ## Notes
 

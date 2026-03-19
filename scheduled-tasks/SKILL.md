@@ -90,7 +90,7 @@ User: "Run it once now to test"
 ## Important Notes
 
 - Internal mode requires `prompt`; `modelId` and `maxIterations` are optional
-- `skills`: `"auto"` loads all, or pass comma-separated skill names
+- `skills`: `"auto"` loads all, or pass a string array of skill names (e.g. `["skill-a", "skill-b"]`)
 - `notify=true` sends desktop notification on completion
 - Minimum interval: ~1 minute (chrome.alarms limit)
 - `run_task_now` requires the task to be enabled

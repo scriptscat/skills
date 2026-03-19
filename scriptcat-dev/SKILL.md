@@ -41,7 +41,7 @@ This skill is about writing the JavaScript code itself. For creating Skill packa
 | **Trigger** | Page load (`@match`), cron (`@crontab`), or manual | Agent decides to call it via the `execute_skill_script` meta-tool |
 | **Runs in** | Page context (content script) or background | Sandbox (background-only) |
 | **UI** | Can modify DOM, show notifications, register menus | No DOM access — returns data to the Agent |
-| **Timeout** | None (long-running OK) | Default 30s, adjustable via `@timeout` |
+| **Timeout** | None (long-running OK) | Adjustable via `@timeout` |
 | **Parameters** | None (reads from page/storage/config) | Declared via `@param`, passed as `args` object |
 | **Return** | No return value expected | `return` sends results back to the Agent |
 

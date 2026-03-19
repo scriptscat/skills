@@ -230,12 +230,12 @@ declare function GM_updateNotification(id: string, details: GMTypes.Notification
 declare function GM_setClipboard(data: string, info?: string | { type?: string; mimetype?: string }): void;
 
 /** Add a DOM element to the page. */
-declare function GM_addElement(tag: string, attributes: Record<string, string | number | boolean>): HTMLElement;
+declare function GM_addElement(tag: string, attributes: Record<string, string | number | boolean>): Element | undefined;
 declare function GM_addElement(
   parentNode: Node,
   tag: string,
   attrs: Record<string, string | number | boolean>
-): HTMLElement;
+): Element | undefined;
 
 /** Inject a CSS stylesheet into the page. */
 declare function GM_addStyle(css: string): Element | undefined;
@@ -752,7 +752,7 @@ declare namespace GMTypes {
     image: NotificationDetails["image"];
     silent: NotificationDetails["silent"];
     tag: NotificationDetails["tag"];
-    text: NotificationDetails["tag"];
+    text: NotificationDetails["text"];
     timeout: NotificationDetails["timeout"];
     title: NotificationDetails["title"];
     url: NotificationDetails["url"];
@@ -889,6 +889,20 @@ declare namespace CATAgent {
 
   // ---- Tool call ----
 
+  /** Attachment metadata for tool results and messages. */
+  interface Attachment {
+    /** Attachment ID. */
+    id: string;
+    /** Attachment type. */
+    type: "image" | "file" | "audio";
+    /** File name. */
+    name: string;
+    /** MIME type (e.g. "image/jpeg", "application/zip"). */
+    mimeType: string;
+    /** File size in bytes. */
+    size?: number;
+  }
+
   /** Record of a tool call made by the LLM. */
   interface ToolCallInfo {
     /** Unique call ID. */
@@ -899,6 +913,8 @@ declare namespace CATAgent {
     arguments: string;
     /** Tool execution result (populated after execution). */
     result?: string;
+    /** Attachments from tool execution (e.g. screenshots, files). */
+    attachments?: Attachment[];
     /** Call status. */
     status?: "pending" | "running" | "completed" | "error";
   }
@@ -1107,6 +1123,20 @@ declare namespace CATAgentDom {
     quality?: number;
     /** Capture the full scrollable page. */
     fullPage?: boolean;
+    /** CSS selector to capture a specific element region. */
+    selector?: string;
+    /** OPFS workspace relative path to save the binary screenshot. */
+    saveTo?: string;
+  }
+
+  /** Result of a `screenshot()` call. */
+  interface ScreenshotResult {
+    /** Base64-encoded data URL. */
+    dataUrl: string;
+    /** OPFS path (when `saveTo` is used). */
+    path?: string;
+    /** File size in bytes (when `saveTo` is used). */
+    size?: number;
   }
 
   /** Options for `navigate()`. */
@@ -1179,6 +1209,8 @@ declare namespace CATAgentDom {
   interface ExecuteScriptOptions {
     /** Target tab ID. */
     tabId?: number;
+    /** Script execution world. MAIN shares page globals, ISOLATED is extension-isolated. Default: ISOLATED. */
+    world?: "MAIN" | "ISOLATED";
   }
 
   /** Result of `stopMonitor()` — collected DOM changes during monitoring. */
@@ -1213,8 +1245,8 @@ declare namespace CATAgentDom {
     /** Read the HTML content of a page (or a selected element). */
     readPage(options?: ReadPageOptions): Promise<PageContent>;
 
-    /** Capture a screenshot of a tab. Returns a base64-encoded data URL. */
-    screenshot(options?: ScreenshotOptions): Promise<string>;
+    /** Capture a screenshot of a tab. */
+    screenshot(options?: ScreenshotOptions): Promise<ScreenshotResult>;
 
     /** Click an element matching the CSS selector. */
     click(selector: string, options?: DomActionOptions): Promise<ActionResult>;
@@ -1350,22 +1382,8 @@ declare namespace CATAgentTask {
 
 // ---- CAT.agent.skills — Skill management API ----
 
-/** Skill management types — install, remove, query, and invoke Agent Skills. */
+/** Skill management types — install, remove, and query Agent Skills. */
 declare namespace CATAgentSkills {
-  /** A parameter definition for a Skill Script. */
-  interface SkillScriptParam {
-    /** Parameter name. */
-    name: string;
-    /** Parameter type. */
-    type: "string" | "number" | "boolean";
-    /** Whether required. */
-    required: boolean;
-    /** Parameter description. */
-    description: string;
-    /** Allowed values (for enum parameters). */
-    enum?: string[];
-  }
-
   /** Summary info for an installed Skill. */
   interface SkillSummary {
     /** Skill name. */
@@ -1409,7 +1427,7 @@ declare namespace CATAgentSkills {
   }
 
   /**
-   * `CAT.agent.skills` — manage Agent Skills (packaged prompts + Skill Scripts + references).
+   * `CAT.agent.skills` — manage Agent Skills (packaged prompts + tools + references).
    * @grant CAT.agent.skills
    */
   interface SkillsAPI {
@@ -1422,7 +1440,7 @@ declare namespace CATAgentSkills {
     /**
      * Install a Skill from a SKILL.md string, with optional bundled scripts and references.
      * @param skillMd - The SKILL.md content (with YAML frontmatter).
-     * @param scripts - Skill Scripts to bundle (with `==SkillScript==` headers).
+     * @param scripts - Skill Script scripts to bundle.
      * @param references - Reference documents to bundle.
      */
     install(
@@ -1434,20 +1452,107 @@ declare namespace CATAgentSkills {
     /** Remove a Skill by name. */
     remove(name: string): Promise<boolean>;
 
-    /**
-     * Call a Skill Script by specifying the skill name and script name.
-     * @param skillName - The name of the Skill containing the script.
-     * @param scriptName - The name of the script within the Skill.
-     * @param params - Optional parameters to pass to the script.
-     */
+    /** Call a skill script by skill name and script name with optional parameters. */
     call(skillName: string, scriptName: string, params?: Record<string, unknown>): Promise<unknown>;
+  }
+}
+
+// ---- CAT.agent.model — Model configuration query API ----
+
+/** Model configuration types — query available LLM models (read-only, apiKey excluded). */
+declare namespace CATAgentModel {
+  /** Model configuration summary (apiKey excluded for security). */
+  interface ModelSummary {
+    /** Unique model config ID. */
+    id: string;
+    /** User-defined display name (e.g. "GPT-4o", "Claude Sonnet"). */
+    name: string;
+    /** LLM provider. */
+    provider: "openai" | "anthropic";
+    /** API base URL. */
+    apiBaseUrl: string;
+    /** Model identifier sent to the provider API. */
+    model: string;
+    /** Maximum output tokens; omitted if unset. */
+    maxTokens?: number;
+  }
+
+  /**
+   * `CAT.agent.model` — query configured LLM models (read-only).
+   * @grant CAT.agent.model
+   */
+  interface ModelAPI {
+    /** List all configured models (apiKey excluded). */
+    list(): Promise<ModelSummary[]>;
+
+    /** Get a specific model by ID. Returns `null` if not found. */
+    get(id: string): Promise<ModelSummary | null>;
+
+    /** Get the default model ID. Returns empty string if none set. */
+    getDefault(): Promise<string>;
+  }
+}
+
+// ---- CAT.agent.opfs — Workspace file system API ----
+
+/** OPFS workspace types — read, write, list, and delete files in the agent workspace. */
+declare namespace CATAgentOPFS {
+  /** Entry info returned by `list()`. */
+  interface FileEntry {
+    /** File or directory name. */
+    name: string;
+    /** Entry type. */
+    type: "file" | "directory";
+    /** File size in bytes (only for files). */
+    size?: number;
+  }
+
+  /** Write result. */
+  interface WriteResult {
+    /** Sanitized path that was written. */
+    path: string;
+    /** Size in bytes. */
+    size: number;
+  }
+
+  /** Read result. */
+  interface ReadResult {
+    /** Sanitized path that was read. */
+    path: string;
+    /** File text content (when format is "text" or omitted). */
+    content?: string;
+    /** Blob URL (when format is "bloburl"). Scoped to the extension origin. */
+    blobUrl?: string;
+    /** Size in bytes. */
+    size: number;
+    /** Detected MIME type (when format is "bloburl"). */
+    mimeType?: string;
+  }
+
+  /**
+   * `CAT.agent.opfs` — workspace file system operations.
+   * All paths are relative to `agents/workspace/` in OPFS.
+   * @grant CAT.agent.opfs
+   */
+  interface OPFSAPI {
+    /** Write content to a file. Creates parent directories automatically. Accepts string, Blob, or data URL. */
+    write(path: string, content: string | Blob): Promise<WriteResult>;
+
+    /** Read content from a file. Use `format: "bloburl"` to get a blob URL for binary files. */
+    read(path: string, format?: "text" | "bloburl"): Promise<ReadResult>;
+
+    /** List files and directories. Defaults to workspace root if path is omitted. */
+    list(path?: string): Promise<FileEntry[]>;
+
+    /** Delete a file or directory. */
+    delete(path: string): Promise<{ success: true }>;
   }
 }
 
 // ---- CAT global object ----
 
 /**
- * ScriptCat Agent global object — provides access to conversation, DOM, task, and skills APIs.
+ * ScriptCat Agent global object — provides access to conversation, tools, DOM, task, and skills APIs.
  * Each sub-API requires its own `@grant` declaration.
  */
 declare const CAT: {
@@ -1460,6 +1565,10 @@ declare const CAT: {
     task: CATAgentTask.TaskAPI;
     /** @grant CAT.agent.skills */
     skills: CATAgentSkills.SkillsAPI;
+    /** @grant CAT.agent.model */
+    model: CATAgentModel.ModelAPI;
+    /** @grant CAT.agent.opfs */
+    opfs: CATAgentOPFS.OPFSAPI;
   };
 };
 
