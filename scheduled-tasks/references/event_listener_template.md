@@ -98,7 +98,7 @@ CAT.agent.task.addListener("TASK_ID_HERE", async (trigger) => {
 
 ## Tips
 
-- Replace `TASK_ID_HERE` with the actual task ID returned by `create_task`
+- Replace `TASK_ID_HERE` with the actual task ID returned by `create_scheduled_task`
 - One userscript can listen to multiple tasks by calling `addListener` multiple times
 - Use `GM_notification` for desktop alerts, `GM_xmlhttpRequest` for HTTP calls
 - Always wrap async work in try/catch to avoid silent failures

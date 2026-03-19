@@ -50,6 +50,18 @@ The Agent already has these tools **without any Skill**. Don't create Skill Scri
 | Search the web and summarize results | `web_search` → `web_fetch` (with `prompt`) per result | Fully built-in, no Skill Script needed |
 | Take a screenshot and annotate it | `execute_script` (screenshot via page API) or Skill Script with `CAT.agent.dom.screenshot` + `saveTo` | Simple screenshot = built-in; annotation/processing = Skill Script |
 
+**Tab lifecycle — close what you no longer need:**
+
+Tabs consume browser resources and clutter the user's tab bar. When a Skill workflow opens or navigates to tabs for intermediate steps (e.g., fetching data from a page, filling a form, taking a screenshot), instruct the Agent to `close_tab` once the tab's purpose is fulfilled. In SKILL.md prompts, make this explicit:
+
+```markdown
+## Tab cleanup
+After extracting data from a tab opened during the workflow, close it with `close_tab(tabId)`.
+Do NOT close tabs that were open before the Skill started — only close tabs the workflow created or navigated to for intermediate purposes.
+```
+
+This applies to both built-in tool workflows and Skill Scripts that use `CAT.agent.dom`. If a Skill Script opens a tab via `CAT.agent.dom.navigate` for a transient operation, it should close the tab before returning, or the SKILL.md should instruct the Agent to close it after processing the script's result.
+
 **Key implication:** A Skill Script should only be created when:
 - The built-in tools can't do the job (e.g., cross-origin HTTP via `GM_xmlhttpRequest`, persistent storage via `GM.getValue`, binary downloads)
 - You need to **encapsulate complex logic** that would be error-prone as raw `execute_script` code
@@ -334,6 +346,7 @@ return result;
 - Don't build one mega-script with many params — split into focused single-responsibility scripts
 - Don't ignore errors — catch exceptions and return `{ error: "meaningful message" }` so the LLM can react
 - **Attachment content field**: when a script returns attachments (files, images), the LLM **cannot see** the attachment contents — it only sees the `content` text field. So `content` must explicitly state what was generated and instruct the LLM not to regenerate it. Example: `content: "Code generation complete. Generated 1 script (attached). Do NOT rewrite the code."`
+- **Leaking tabs** — if a Skill Script opens or navigates to a tab (via `CAT.agent.dom.navigate` or `open_tab`) for an intermediate operation, close it when done. Either close it inside the script itself, or instruct the Agent in SKILL.md to `close_tab` after processing the result. Forgetting this leads to tab buildup that confuses the user and wastes resources
 
 ### Step 5: Verify
 
@@ -403,6 +416,7 @@ Use this checklist to systematically review the Skill:
 - **Examples**: Are there input→output examples? Do they cover the main scenarios (including error cases)?
 - **Error handling**: Do scripts return `{ error: "..." }` rather than throwing? Does SKILL.md guide the Agent on how to handle errors?
 - **References usage**: Is the SKILL.md body over 500 lines? Should large docs move to `references/` for on-demand loading?
+- **Tab cleanup**: Does the Skill open or navigate to tabs during its workflow? Does it instruct the Agent to `close_tab` intermediate tabs once their purpose is fulfilled? Leaking tabs is a common issue in browser-related Skills.
 
 #### Common optimization patterns
 

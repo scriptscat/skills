@@ -1,6 +1,6 @@
 // ==SkillScript==
-// @name         create_task
-// @description  Create a scheduled task. Supports internal (LLM auto-executes) and event (notifies script) modes
+// @name         create_scheduled_task
+// @description  Create a scheduled task with cron expression. Supports internal (LLM auto-executes) and event (notifies script) modes. This is for persistent cron-based scheduling — NOT for in-session task tracking (use the built-in create_task for that).
 // @param        name string [required] Task name
 // @param        crontab string [required] Cron expression, format: min hour day month weekday, e.g. "0 9 * * *"
 // @param        mode string[internal,event] [required] Execution mode: internal=LLM auto-executes, event=notifies script

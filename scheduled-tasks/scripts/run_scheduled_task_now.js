@@ -1,5 +1,5 @@
 // ==SkillScript==
-// @name         run_task_now
+// @name         run_scheduled_task_now
 // @description  Manually trigger a scheduled task once immediately, without affecting its normal cron schedule
 // @param        id string [required] Task ID
 // @grant        CAT.agent.task

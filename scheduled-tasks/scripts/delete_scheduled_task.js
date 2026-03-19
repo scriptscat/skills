@@ -1,5 +1,5 @@
 // ==SkillScript==
-// @name         delete_task
+// @name         delete_scheduled_task
 // @description  Delete a scheduled task and clear its run history
 // @param        id string [required] Task ID
 // @grant        CAT.agent.task

@@ -24,9 +24,16 @@ You now have tools to control the browser. They are split into **primitive tools
 
 | Tool | What it does |
 |------|-------------|
-| `browser_action` | Sub-agent reads the page and returns selectors / extracted data / suggestions — **read-only, no side effects** |
+| `browser_action` | Sub-agent analyzes page structure and returns CSS selectors / extracted data / action suggestions — **read-only, no side effects**. Use this instead of `get_tab_content` when you need to locate interactive elements (buttons, inputs, forms) for subsequent click/fill operations. |
 | `smart_fill` | Fill a form field with CDP trusted input + auto-verify the value |
 | `click_and_wait` | CDP trusted click + wait for page changes (navigation, new tabs, DOM mutations) — sub-agent summarizes what changed |
+
+## When to use `browser_action` vs `get_tab_content`
+
+- **`get_tab_content`** (built-in, always available): Read page text as markdown — for reading articles, extracting text content, or LLM summarization.
+- **`browser_action`** (this skill): Analyze page structure — for locating interactive elements (buttons, inputs, links) and getting CSS selectors to use with `smart_fill`, `click_and_wait`, etc.
+
+Rule of thumb: if your next step is to **read/summarize**, use `get_tab_content`; if your next step is to **click/fill/interact**, use `browser_action`.
 
 ## Workflow
 

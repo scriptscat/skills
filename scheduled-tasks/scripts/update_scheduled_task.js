@@ -1,5 +1,5 @@
 // ==SkillScript==
-// @name         update_task
+// @name         update_scheduled_task
 // @description  Update a scheduled task's configuration — cron expression, enabled/disabled, prompt, etc.
 // @param        id string [required] Task ID
 // @param        name string New task name

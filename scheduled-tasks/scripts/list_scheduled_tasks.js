@@ -1,5 +1,5 @@
 // ==SkillScript==
-// @name         list_tasks
+// @name         list_scheduled_tasks
 // @description  List all scheduled tasks with name, mode, cron, enabled status, and last run result. Supports optional filtering by mode and enabled status.
 // @param        mode string[internal,event] Filter by execution mode (optional, shows all if omitted)
 // @param        enabled boolean Filter by enabled status (optional, shows all if omitted)

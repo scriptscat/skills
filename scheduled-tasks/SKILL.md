@@ -7,6 +7,8 @@ description: Create, list, update, delete, and trigger cron-based scheduled task
 
 Create and manage cron-based scheduled tasks. Tasks run automatically at their scheduled time — the user does not need to be online.
 
+> **Note:** These tools manage **persistent cron-based scheduled tasks** (stored in extension storage, survive browser restart). They are different from the built-in `create_task`/`list_tasks`/`update_task`/`delete_task` tools which are for **in-session task tracking** only.
+
 ## Two Modes
 
 - **internal** — The Agent (LLM) receives the prompt and autonomously executes it (search, summarize, analyze). Best for tasks requiring understanding and generation.
@@ -29,11 +31,11 @@ CAT.agent.task.addListener("task_id_here", (trigger) => {
 
 | Tool | Input → Output |
 |------|----------------|
-| `create_task` | name, cron, mode, prompt?, notify?, modelId? → task ID + next run time |
-| `list_tasks` | mode?, enabled? → tasks with status and last run info |
-| `update_task` | id, fields to change → updated task info |
-| `delete_task` | id → deletion confirmation |
-| `run_task_now` | id → triggers immediate execution (schedule unaffected) |
+| `create_scheduled_task` | name, cron, mode, prompt?, notify?, modelId? → task ID + next run time |
+| `list_scheduled_tasks` | mode?, enabled? → tasks with status and last run info |
+| `update_scheduled_task` | id, fields to change → updated task info |
+| `delete_scheduled_task` | id → deletion confirmation |
+| `run_scheduled_task_now` | id → triggers immediate execution (schedule unaffected) |
 
 ## Workflow
 
@@ -41,12 +43,12 @@ CAT.agent.task.addListener("task_id_here", (trigger) => {
 1. Decide mode (internal / event) based on user intent
 2. Convert time description to cron (see `references/cron_cheatsheet.md`). If ambiguous, confirm with user
 3. For internal: write a specific prompt (see below)
-4. `create_task` → confirm next run time
+4. `create_scheduled_task` → confirm next run time
 5. For event: remind user to set up listener script
 
-**Managing:** `list_tasks` → then `update_task` / `delete_task` / `run_task_now` as needed
+**Managing:** `list_scheduled_tasks` → then `update_scheduled_task` / `delete_scheduled_task` / `run_scheduled_task_now` as needed
 
-**Failed tasks:** Check `lastRunStatus`/`lastRunError` in `list_tasks`. Inform user with error details. Fix (rewrite prompt, raise maxIterations, check URL), then `run_task_now` to verify.
+**Failed tasks:** Check `lastRunStatus`/`lastRunError` in `list_scheduled_tasks`. Inform user with error details. Fix (rewrite prompt, raise maxIterations, check URL), then `run_scheduled_task_now` to verify.
 
 ### Time description → cron
 
@@ -70,21 +72,21 @@ Principles: specify scope, quantity, format, sources, and failure handling.
 
 ```
 User: "Summarize tech news every morning at 9"
-→ create_task("Daily tech news", "0 9 * * *", "internal",
+→ create_scheduled_task("Daily tech news", "0 9 * * *", "internal",
     prompt="Search today's tech news, pick 5 most important, title + summary each", notify=true)
 
 User: "Check service health every 30 min"
-→ create_task("Health check", "*/30 * * * *", "event")
+→ create_scheduled_task("Health check", "*/30 * * * *", "event")
   // Remind user to set up addListener
 
 User: "Change news task to weekdays only"
-→ list_tasks() → find task → update_task(id, crontab="0 9 * * 1-5")
+→ list_scheduled_tasks() → find task → update_scheduled_task(id, crontab="0 9 * * 1-5")
 
 User: "Pause the news task"
-→ update_task(id, enabled=false)
+→ update_scheduled_task(id, enabled=false)
 
 User: "Run it once now to test"
-→ run_task_now(id)
+→ run_scheduled_task_now(id)
 ```
 
 ## Important Notes
@@ -93,6 +95,6 @@ User: "Run it once now to test"
 - `skills`: `"auto"` loads all, or pass a string array of skill names (e.g. `["skill-a", "skill-b"]`)
 - `notify=true` sends desktop notification on completion
 - Minimum interval: ~1 minute (chrome.alarms limit)
-- `run_task_now` requires the task to be enabled
+- `run_scheduled_task_now` requires the task to be enabled
 - **Mode is immutable** — to switch, delete and recreate
 - **Timezone:** Cron uses user's local browser timezone, no UTC conversion needed
