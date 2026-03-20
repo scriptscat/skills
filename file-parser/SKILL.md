@@ -1,11 +1,11 @@
 ---
 name: file-parser
-description: 解析常见文件格式（Excel、PDF、Word、CSV、PPT），提取文本和结构化数据
+description: 解析常见文件格式（Excel、PDF、Word、CSV、PPT），提取文本和结构化数据。当用户上传文件附件、需要提取表格数据、解析 PDF 文档、读取 Word/PPT 内容或处理 CSV 数据时使用。支持从附件（attachmentId）或 OPFS 路径读取。
 ---
 
 # 文件解析 Skill
 
-解析用户上传或 OPFS 中的文件，提取可读内容和结构化数据。
+你现在可以解析用户上传或 OPFS 中的文件，提取可读内容和结构化数据。根据文件扩展名或 MIME 类型选择对应脚本。
 
 ## 支持格式
 
@@ -43,6 +43,26 @@ description: 解析常见文件格式（Excel、PDF、Word、CSV、PPT），提�
 2. 根据 `name` 扩展名或 `mimeType` 选择对应脚本
 3. 传入 `attachmentId` 调用脚本
 4. 解析结果返回给用户，或用于后续处理
+
+## 调用示例
+
+**用户上传 Excel**:
+```
+→ execute_skill_script("file-parser", "parse_excel", { attachmentId: "abc123" })
+← { success: true, fileName: "data.xlsx", sheets: [{ name: "Sheet1", rows: [...], rowCount: 150, truncated: false }] }
+```
+
+**解析 OPFS 中的 PDF**:
+```
+→ execute_skill_script("file-parser", "parse_pdf", { filePath: "docs/report.pdf", maxPages: 10 })
+← { success: true, pages: [{ page: 1, text: "..." }], totalPages: 25, truncated: true }
+```
+
+**解析 Word 文档**:
+```
+→ execute_skill_script("file-parser", "parse_word", { attachmentId: "def456" })
+← { success: true, fileName: "doc.docx", text: "...", html: "<p>..." }
+```
 
 ## 大文件建议
 

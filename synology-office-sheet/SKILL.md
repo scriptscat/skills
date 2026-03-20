@@ -14,24 +14,10 @@ Read and write cells in Synology Office spreadsheets via internal APIs.
 
 ## Tools
 
-### `read_sheet`
-
-Read all cell data from the spreadsheet (via Snapshot HTTP API).
-
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tabId` | number | yes | Tab ID of the open Synology Office spreadsheet page |
-| `sheetId` | string | no | Specific sheet ID to read (e.g. `"sh_1"`). Omit to read all sheets |
-
-### `write_cells`
-
-Write values to one or more cells (via socket.io in page context).
-
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tabId` | number | yes | Tab ID of the open Synology Office spreadsheet page |
-| `changes` | string | yes | JSON array of `[row, col, value]` triples (0-based). E.g. `[[0,0,"Hello"],[1,2,42]]` |
-| `sheetId` | string | no | Target sheet ID (default: `"sh_1"`) |
+| Tool | Input → Output |
+|------|----------------|
+| `read_sheet` | tabId, sheetId? → sheets[] with cell data (`cells[row][col].v`, 0-based) |
+| `write_cells` | tabId, changes (`[[row,col,value],...]` JSON, 0-based), sheetId? → write confirmation |
 
 ## Workflow
 
@@ -67,6 +53,26 @@ JSON array of `[row, col, value]` triples (0-based):
 
 ```
 [[0, 0, "Hello"], [1, 2, 42]]
+```
+
+## Examples
+
+**Read → analyze → write back**:
+```
+→ list_tabs()
+← tabId=42 | Synology Office | https://nas.local/oo/r/...
+
+→ read_sheet(tabId=42)
+← { sheets: [{ id: "sh_1", title: "Sheet1", cells: { "0": { "0": { "v": "Name" }, "1": { "v": "Score" } }, "1": { "0": { "v": "Alice" }, "1": { "v": 85 } } } }] }
+
+→ write_cells(tabId=42, changes='[[1,2,"Pass"],[2,0,"Bob"],[2,1,92],[2,2,"Pass"]]')
+← { success: true }
+```
+
+**Read specific sheet**:
+```
+→ read_sheet(tabId=42, sheetId="sh_2")
+← { sheets: [{ id: "sh_2", title: "Summary", cells: { ... } }] }
 ```
 
 ## Tips

@@ -1,6 +1,6 @@
 ---
 name: xiaohongshu-publisher
-description: 小红书运营助手 — 素材收集、风格学习、笔记编写、配图生成与发布
+description: 小红书运营助手 — 素材收集、风格学习、笔记编写、配图生成与发布。当用户想发小红书笔记、创建图文内容、学习爆款笔记风格、生成配图、或管理小红书发布流程时使用。
 config:
   AUTO_PUBLISH:
     title: "写完自动发布（否则仅保存草稿）"

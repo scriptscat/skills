@@ -9,15 +9,13 @@ description: 脚本猫/油猴脚本开发助手 — 帮助编写、调试和优�
 
 ## 可用资源
 
-| 类型 | 名称 | 内容 |
-|------|------|------|
-| 脚本 | `analyze_page` | 分析目标页面的 DOM 结构，返回框架信息、可用选择器、动态元素、全局变量等，辅助脚本编写 |
-| 参考 | `metadata` | ==UserScript== 元数据块完整参考（@match、@grant、@run-at 等全部字段） |
-| 参考 | `gm_api` | 标准 GM API 参考（GM.xmlHttpRequest、GM.setValue、GM_addStyle 等） |
-| 参考 | `scriptcat_api` | ScriptCat 特有 API（CAT_* 函数、@background、@crontab、CATRetryError、CAT.agent.*） |
-| 参考 | `patterns` | 常见开发模式代码片段（等待元素、XHR 拦截、SPA 适配、CSS 注入等） |
-
-**按需加载**：仅在需要特定 API 细节时才 `read_reference`，不要一次性加载全部。
+| 类型 | 名称 | Input → Output / 何时加载 |
+|------|------|--------------------------|
+| 脚本 | `analyze_page` | tabId → { framework, selectors[], dynamicElements[], globals[] } |
+| 参考 | `metadata` | 写元数据块时不确定字段 → `read_reference("scriptcat-dev", "metadata")` |
+| 参考 | `gm_api` | 需要 GM API 用法 → `read_reference("scriptcat-dev", "gm_api")` |
+| 参考 | `scriptcat_api` | 需要 ScriptCat 特有功能 → `read_reference("scriptcat-dev", "scriptcat_api")` |
+| 参考 | `patterns` | 需要常见模式参考 → `read_reference("scriptcat-dev", "patterns")` |
 
 ## 工作流
 

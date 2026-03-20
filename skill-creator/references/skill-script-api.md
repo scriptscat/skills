@@ -366,6 +366,202 @@ const entries = await CAT.agent.opfs.list("reports/");
 await CAT.agent.opfs.delete("reports/old.txt");
 ```
 
+## Common Patterns
+
+These patterns are derived from real Skills in production. Use them as building blocks.
+
+### executeScript unwrap
+
+`CAT.agent.dom.executeScript()` wraps every return in `{ result, tabId }`. Always unwrap:
+
+```js
+const unwrap = (v) =>
+  v && typeof v === 'object' && 'result' in v ? v.result : v;
+
+const title = unwrap(
+  await CAT.agent.dom.executeScript('return document.title;', { tabId })
+);
+```
+
+Define `unwrap` at the top of every script that uses `executeScript`. This is the **#1 gotcha** for new Skill authors.
+
+### Multi-action scripts
+
+Use an enum `@param` to combine related operations into one script:
+
+```js
+// @param  action  string[explore,inject,upload]  [required]  Operation to perform
+```
+
+Structure: one `if (action === '...')` block per action, each validating its own params and returning structured results. Always add a final `return { error: ... }` for invalid actions. Real examples: `editor` (explore/inject/upload_cover), `login` (check/wait), `manage_styles` (list/save/load/delete).
+
+### Chunked content injection
+
+For injecting large strings (>30KB) via `executeScript`, use a hidden textarea as a buffer:
+
+```js
+const CHUNK_SIZE = 30000;
+
+// 1. Create hidden textarea
+await CAT.agent.dom.executeScript(`
+  var existing = document.getElementById('__sc_inject__');
+  if (existing) existing.remove();
+  var ta = document.createElement('textarea');
+  ta.id = '__sc_inject__'; ta.style.display = 'none';
+  document.body.appendChild(ta);
+`, { tabId });
+
+// 2. Append chunks
+for (let i = 0; i < content.length; i += CHUNK_SIZE) {
+  const chunk = JSON.stringify(content.substring(i, i + CHUNK_SIZE));
+  const isFirst = i === 0;
+  await CAT.agent.dom.executeScript(
+    `var ta = document.getElementById('__sc_inject__');
+     ${isFirst ? 'ta.value = ' : 'ta.value += '}${chunk};`,
+    { tabId }
+  );
+}
+
+// 3. Use the accumulated content + cleanup
+const result = unwrap(await CAT.agent.dom.executeScript(`
+  var ta = document.getElementById('__sc_inject__');
+  var html = ta ? ta.value : ''; if (ta) ta.remove();
+  if (!html) return { ok: false, error: 'Buffer empty' };
+  // ... use html (e.g. pasteHTML into editor) ...
+  return { ok: true };
+`, { tabId }));
+```
+
+### File upload via DataTransfer
+
+For programmatic file input without user interaction (images, covers, attachments):
+
+```js
+await CAT.agent.dom.executeScript(`
+  var dataUrl = ${JSON.stringify(base64DataUrl)};
+  var arr = dataUrl.split(',');
+  var mime = arr[0].match(/:(.*?);/)[1];
+  var bstr = atob(arr[1]);
+  var n = bstr.length;
+  var u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  var file = new File([u8arr], 'upload_' + Date.now() + '.png', { type: mime });
+
+  var dt = new DataTransfer();
+  dt.items.add(file);
+  var input = document.querySelector('input[type="file"]');
+  input.files = dt.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+`, { tabId });
+```
+
+### Retry with polling
+
+For waiting on async conditions (page load, element appearance, login completion):
+
+```js
+const maxRetries = 10;
+const interval = 1000; // ms
+
+for (let i = 0; i < maxRetries; i++) {
+  const ready = unwrap(await CAT.agent.dom.executeScript(
+    `return !!document.querySelector('.target-element');`, { tabId }
+  ));
+  if (ready) break;
+  await new Promise(r => setTimeout(r, interval));
+}
+```
+
+For login polling with timeout (real pattern from publisher Skills):
+
+```js
+const maxWait = (args.timeout || 120) * 1000;
+const startTime = Date.now();
+
+while (Date.now() - startTime < maxWait) {
+  const result = await checkLogin(); // calls executeScript internally
+  if (result.status === 'logged_in') return result;
+  await new Promise(r => setTimeout(r, 3000));
+}
+
+return { status: 'timeout', message: `Login timed out (${maxWait / 1000}s)` };
+```
+
+### PasteHTML for rich content editors
+
+ProseMirror editors (WeChat, etc.) require paste events, not `insertHTML`:
+
+```js
+function pasteHTML(el, html) {
+  el.focus();
+  var tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  var plain = tempDiv.textContent || '';
+  var pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(pasteEvent, 'clipboardData', {
+    value: {
+      getData: function(type) {
+        if (type === 'text/html') return html;
+        if (type === 'text/plain') return plain;
+        return '';
+      },
+      types: ['text/html', 'text/plain'], items: [], files: []
+    }
+  });
+  el.dispatchEvent(pasteEvent);
+}
+```
+
+### React input value setting
+
+React inputs use synthetic state — `input.value = x` won't update React state. Use the native setter:
+
+```js
+var input = document.querySelector('input[name="title"]');
+var setter = Object.getOwnPropertyDescriptor(
+  window.HTMLInputElement.prototype, 'value'
+).set;
+setter.call(input, 'New value');
+input.dispatchEvent(new Event('input', { bubbles: true }));
+input.dispatchEvent(new Event('change', { bubbles: true }));
+```
+
+### OPFS path conventions
+
+Organize OPFS files by skill → category → file:
+
+```js
+const STYLES_DIR = 'my-skill/styles';
+function safeName(name) {
+  return name.replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, '_');
+}
+const path = `${STYLES_DIR}/writing/${safeName(profileName)}.json`;
+await CAT.agent.opfs.write(path, JSON.stringify(data, null, 2));
+```
+
+### Login status check + QR screenshot
+
+A reusable pattern for platform authentication:
+
+```js
+// 1. Check selectors for logged-in vs login-page state
+const status = unwrap(await CAT.agent.dom.executeScript(`
+  if (document.querySelector('.logged-in-indicator')) return 'logged_in';
+  if (document.querySelector('.login-form')) return 'need_login';
+  return 'unknown';
+`, { tabId }));
+
+// 2. If not logged in, screenshot the QR code area
+if (status === 'need_login') {
+  const screenshot = await CAT.agent.dom.screenshot({ tabId, selector: '.qr-code-area' });
+  return {
+    status: 'need_login',
+    content: 'Please scan the QR code to log in',
+    attachments: screenshot ? [screenshot] : []
+  };
+}
+```
+
 ## Notes
 
 - Permissions are verified per-execution via `@grant` declarations. Sensitive operations may trigger a user confirmation dialog.

@@ -179,6 +179,130 @@ For the full list of available endpoints, use read_reference to load `endpoints.
 
 Don't just say "see references/" — state the exact condition that should prompt reading each file.
 
+## wechat-publisher / xiaohongshu-publisher — the pipeline pattern
+
+Both publisher Skills follow the same multi-phase pipeline architecture, adapted per platform.
+
+### Structure
+
+```
+wechat-publisher/
+├── SKILL.md
+├── scripts/
+│   ├── login.js           # Check status / wait for QR login
+│   ├── editor.js          # Explore / inject / upload_cover
+│   ├── extract_articles.js # Fetch article list and content
+│   ├── extract_styles.js  # Parse inline styles from HTML
+│   ├── manage_styles.js   # CRUD for style profiles in OPFS
+│   └── generate_image.js  # Generate cover/illustrations
+└── references/
+    ├── platform_guide.md           # Fallback selectors, DOM quirks
+    └── style_analysis_template.md  # Analysis dimensions for style learning
+```
+
+### What makes the pipeline pattern good
+
+**1. Numbered phases with skip points:**
+
+```
+1. Login → 2. Materials → 3. Style Learning (optional) → 4. Content Creation → 5. Publish
+```
+
+Each phase starts with `ask_user` to confirm or skip. The user stays in control without micromanaging. `create_task` tracks progress across phases.
+
+**2. Multi-action scripts reduce tool count:**
+
+Instead of 6 separate scripts for explore, inject, upload_cover, etc., one `editor` script with `action` enum handles all editor operations. The LLM sees one tool with clear action choices, not a dozen similar-sounding tools.
+
+**3. Login pattern is reusable across platforms:**
+
+Both publishers use the same login architecture:
+- `action=check` → detect status via selectors → screenshot QR if not logged in
+- `action=wait` → poll every 3s until login or timeout (120s)
+
+The only difference is the selectors and platform URL.
+
+**4. Style management separates writing from layout:**
+
+WeChat needs both writing style (tone, structure) and layout style (HTML templates, colors). Xiaohongshu only needs writing style (plain text platform). The same `manage_styles` CRUD pattern works for both — just different `type` values.
+
+**5. Safety gates before irreversible actions:**
+
+```markdown
+- ⚠️ Publishing is irreversible — **explicitly warn the user** in `ask_user`
+- ⚠️ Xiaohongshu publish is INSTANT — no confirmation dialog!
+```
+
+The SKILL.md doesn't just say "be careful" — it specifies exactly when to warn and what the risk is.
+
+**6. OPFS anti-pattern called out explicitly:**
+
+```markdown
+⚠️ **禁止 opfs_write → opfs_read 中转模式**：素材文本内容已在对话上下文中...
+```
+
+This prevents a common mistake where text data is written to OPFS then read back (which only returns a blob URL).
+
+### When to use the pipeline pattern
+
+- Multi-step workflows with distinct phases (login → collect → create → publish)
+- Workflows where each phase can succeed or fail independently
+- Tasks that need user confirmation at key decision points
+- Cross-platform Skills that share the same pipeline structure but differ in platform specifics
+
+## file-parser — the dispatch pattern
+
+A simpler pattern for Skills that provide format-specific processing.
+
+### Structure
+
+```
+file-parser/
+├── SKILL.md
+└── scripts/
+    ├── parse_excel.js   # .xlsx/.xls → JSON rows
+    ├── parse_pdf.js     # .pdf → per-page text
+    ├── parse_word.js    # .docx → text/HTML
+    ├── parse_csv.js     # .csv/.tsv → JSON rows
+    └── parse_pptx.js    # .pptx → per-slide text
+```
+
+### What makes the dispatch pattern good
+
+**1. SKILL.md is a routing table:**
+
+```markdown
+| Format | Extension | Script | Output |
+|--------|-----------|--------|--------|
+| Excel  | .xlsx/.xls | `parse_excel` | JSON row arrays |
+| PDF    | .pdf | `parse_pdf` | Per-page text + metadata |
+```
+
+The Agent can pattern-match file type → script name instantly.
+
+**2. Dual input support:**
+
+All scripts accept either `attachmentId` (from user upload FileBlock) or `filePath` (from OPFS). Priority: `attachmentId` first (no extra storage step needed).
+
+**3. Truncation with flags:**
+
+```markdown
+- Table data: default max 200 rows (configurable via `maxRows`)
+- If data exceeds limits, `truncated: true` flag is set
+```
+
+The Agent knows when it has partial data and can ask the user if they need more.
+
+**4. No over-engineering:**
+
+Each script does one thing — parse a format. No multi-action pattern needed because the operations don't share logic. The dispatch happens in SKILL.md (the Agent picks the right script), not in code.
+
+### When to use the dispatch pattern
+
+- Format/type-specific processing (file parsing, API integrations per service)
+- Each operation is independent with no shared state
+- The routing logic is simple enough for the LLM to handle via the SKILL.md table
+
 ## Key takeaways
 
 1. **SKILL.md is a prompt, not documentation** — write as instructions for the Agent ("You now have tools to..."), not as a reference for humans ("This Skill provides...")
@@ -189,3 +313,4 @@ Don't just say "see references/" — state the exact condition that should promp
 6. **Examples teach better than rules** — `→`/`←` compact format, cover diverse scenarios
 7. **Caveats should include recovery actions** — "if X happens, do Y", not just "X might happen"
 8. **Use references for bulk content** — keep SKILL.md under 500 lines, push large docs to references/ with explicit read conditions
+9. **Choose the right pattern** — pipeline for multi-phase workflows, dispatch for format-specific routing, tool-set for related operations on the same domain

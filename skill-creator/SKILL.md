@@ -5,68 +5,42 @@ description: Create and improve ScriptCat Agent Skills. Use when the user wants 
 
 # ScriptCat Skill Creator
 
-You help users create, improve, and package Skills for the ScriptCat Agent.
+You create, improve, and package Skills for the ScriptCat Agent. A Skill extends what the Agent can do.
 
-## Background
+## Core concepts
 
-ScriptCat is a browser extension (enhanced Tampermonkey) whose Agent feature lets userscripts call LLMs. A Skill extends the Agent's capabilities:
+**Skill = SKILL.md (prompt + metadata) + optional scripts/ (Skill Scripts) + optional references/ (on-demand docs)**
 
-**Skill = prompt (SKILL.md) + optional Skill Scripts (scripts/) + optional reference docs (references/)**
-
-Skills load progressively: the Agent always sees each Skill's name + description in its system prompt. When it decides a Skill is relevant, it calls the built-in `load_skill(name)` meta-tool, which injects the SKILL.md body and lists available scripts. References are read on demand via `read_reference`. Scripts are invoked via a single `execute_skill_script` meta-tool that takes `skill`, `script`, and `params` arguments.
+Loading sequence: Agent sees each Skill's `name` + `description` → decides to call `load_skill(name)` → SKILL.md body injected → scripts listed → `execute_skill_script` invokes scripts → `read_reference` loads docs on demand.
 
 Read `references/scriptcat.d.ts` for full type definitions of all CAT APIs.
 
 ### Agent built-in tools
 
-The Agent already has these tools **without any Skill**. Don't create Skill Scripts that duplicate them — instead, design Skills that complement or orchestrate them.
+Don't create Skill Scripts that duplicate these — design Skills that complement them.
 
 | Tool | What it does |
 |------|-------------|
-| `web_fetch` | Fetch a URL, return text content (requires `prompt` to extract/summarize via LLM) |
-| `web_search` | Search the web, return results with title/URL/snippet |
-| `get_tab_content` | Read a browser tab's content and extract information via LLM (requires `prompt`) |
-| `list_tabs` | List open tabs (filterable by URL/title pattern) |
+| `web_fetch` | Fetch URL + LLM extraction (text only, requires `prompt`) |
+| `web_search` | Web search → title/URL/snippet results |
+| `get_tab_content` | Read tab content + LLM extraction (requires `prompt`) |
+| `list_tabs` | List open tabs (filterable) |
 | `open_tab` / `close_tab` / `activate_tab` | Tab management |
-| `execute_script` | Execute JS in a page tab or sandbox (30s timeout) |
-| `opfs_write` / `opfs_read` / `opfs_list` / `opfs_delete` | Workspace file system |
-| `ask_user` | Ask the user a question (free text or structured choices, 5min timeout) |
-| `agent` | Spawn a sub-agent for independent subtasks (no ask_user, no nested sub-agents) |
-| `create_task` / `get_task` / `update_task` / `list_tasks` / `delete_task` | Task tracking |
+| `execute_script` | Run JS in page tab (MAIN world, 30s timeout) or sandbox |
+| `opfs_write` / `opfs_read` / `opfs_list` / `opfs_delete` | Workspace files. `opfs_read` returns blob URL only; use `CAT.agent.opfs.read` in Skill Scripts for text |
+| `ask_user` | Ask user a question (free text or structured choices) |
+| `agent` | Spawn sub-agent (no ask_user, no nesting) |
+| `create_task` / `update_task` / `list_tasks` | Task tracking |
 | `load_skill` / `execute_skill_script` / `read_reference` | Skill meta-tools |
 
-**Common scenarios & tool combinations:**
+### When to create a Skill Script (vs using built-in tools)
 
-| Scenario | Tools / approach | Why |
-|----------|-----------------|-----|
-| Read a page and extract structured data | `get_tab_content` (with `prompt`) → LLM parses | Built-in, no Skill Script needed |
-| Fill a multi-step form | `get_tab_content` → `execute_script` per field → `execute_script` submit | Built-in combo; consider a Skill Script if the form logic is complex or reusable |
-| Download a binary file and process it | Skill Script: `fetch()` → `CAT.agent.opfs.write(blob)` | `web_fetch` is text-only; binary needs Skill Script with `@grant CAT.agent.opfs` |
-| Call an authenticated third-party API | Skill Script with `GM_xmlhttpRequest` + `CAT_CONFIG` for API key | `web_fetch` has no auth header support; `GM_xmlhttpRequest` does |
-| Monitor a page for changes periodically | Skill Script with `CAT.agent.task` (internal mode, cron) + `CAT.agent.dom` | Needs scheduled execution + DOM access — both require `@grant` |
-| Batch-process multiple tabs | `list_tabs` → `agent` (sub-agent) per tab | Built-in parallel processing; Skill just provides the orchestration prompt |
-| Save user preferences across sessions | Skill Script with `GM.getValue` / `GM.setValue` | `opfs_*` is for files; key-value persistence needs GM storage |
-| Generate content with a specialized sub-agent | Skill Script with `CAT.agent.conversation` (ephemeral + scoped skills) | Custom system prompt + tool set requires conversation API |
-| Search the web and summarize results | `web_search` → `web_fetch` (with `prompt`) per result | Fully built-in, no Skill Script needed |
-| Take a screenshot and annotate it | `execute_script` (screenshot via page API) or Skill Script with `CAT.agent.dom.screenshot` + `saveTo` | Simple screenshot = built-in; annotation/processing = Skill Script |
+Create a Skill Script **only** when:
+- Built-in tools can't do it — cross-origin HTTP (`GM_xmlhttpRequest`), binary downloads, persistent key-value storage (`GM.getValue`)
+- You need `@grant` permissions — `CAT.agent.dom` (screenshots, trusted click/fill), `CAT.agent.conversation` (sub-agents), `CAT.agent.task` (scheduled tasks)
+- Complex logic needs encapsulation — error-prone as raw `execute_script`, or reused across multiple Agent turns
 
-**Tab lifecycle — close what you no longer need:**
-
-Tabs consume browser resources and clutter the user's tab bar. When a Skill workflow opens or navigates to tabs for intermediate steps (e.g., fetching data from a page, filling a form, taking a screenshot), instruct the Agent to `close_tab` once the tab's purpose is fulfilled. In SKILL.md prompts, make this explicit:
-
-```markdown
-## Tab cleanup
-After extracting data from a tab opened during the workflow, close it with `close_tab(tabId)`.
-Do NOT close tabs that were open before the Skill started — only close tabs the workflow created or navigated to for intermediate purposes.
-```
-
-This applies to both built-in tool workflows and Skill Scripts that use `CAT.agent.dom`. If a Skill Script opens a tab via `CAT.agent.dom.navigate` for a transient operation, it should close the tab before returning, or the SKILL.md should instruct the Agent to close it after processing the script's result.
-
-**Key implication:** A Skill Script should only be created when:
-- The built-in tools can't do the job (e.g., cross-origin HTTP via `GM_xmlhttpRequest`, persistent storage via `GM.getValue`, binary downloads)
-- You need to **encapsulate complex logic** that would be error-prone as raw `execute_script` code
-- The operation requires specific `@grant` permissions (e.g., `CAT.agent.dom`, `CAT.agent.conversation`, `CAT.agent.task`)
-- The workflow is **reusable** — if the same multi-step logic will be triggered repeatedly, packaging it as a Skill Script is cleaner than relying on the LLM to reconstruct it each time
+**Don't** create scripts for: page reading (use `get_tab_content`), web search (use `web_search` → `web_fetch`), simple JS execution (use `execute_script`), tab management (use built-in tools).
 
 ## Creating a new Skill
 
@@ -135,39 +109,31 @@ If the Skill needs user-provided credentials, preferences, or settings, declare 
 
 **Field properties:** `title` (display label), `type` (required), `secret` (mask input), `required` (show indicator), `default` (pre-filled value), `values` (options for `select`).
 
-**Example — weather API Skill:**
+**Example:**
 ```yaml
 config:
   API_KEY:
-    title: "OpenWeatherMap API Key"
+    title: "API Key"
     type: text
     secret: true
     required: true
-  DEFAULT_CITY:
-    title: "Default City"
-    type: text
-    default: "Beijing"
-  UNITS:
-    title: "Temperature Units"
+  AUTO_PUBLISH:
+    title: "Auto-publish after creation"
+    type: switch
+    default: false
+  OUTPUT_FORMAT:
+    title: "Output Format"
     type: select
-    values: [metric, imperial, standard]
-    default: metric
+    values: [json, csv, markdown]
+    default: json
 ```
 
-**Reading config in Skill Scripts:**
+**Reading config in scripts:** `CAT_CONFIG` is a frozen read-only object. Always validate required fields:
 ```js
-const apiKey = CAT_CONFIG.API_KEY;
-if (!apiKey) {
-  return { error: "API_KEY not configured. Set it in Skills → Config." };
-}
-const units = CAT_CONFIG.UNITS || "metric";
+if (!CAT_CONFIG.API_KEY) return { error: "API_KEY not configured. Set it in Skills → Config." };
 ```
 
-`CAT_CONFIG` is a frozen read-only object injected at runtime. Always check required fields and provide fallbacks for optional ones.
-
-**When to use config vs `GM.getValue`:**
-- **Config** — values the user sets once at install time (API keys, preferences). Declared in frontmatter, has a UI form.
-- **GM.getValue** — values the Skill reads/writes at runtime (session state, caches, user data accumulated over time).
+**Config vs `GM.getValue`:** Config = install-time settings with UI form (API keys, preferences). `GM.getValue` = runtime read/write (caches, session state, accumulated data).
 
 #### Writing the description
 
@@ -225,7 +191,15 @@ The body should tell the Agent *how to act*, not explain concepts. Good patterns
   When the user asks about a site not in the known list, use read_reference to load `supported_sites.md`.
   ```
 
-Keep the body under 500 lines. The `browser-automation` Skill in `references/skill-examples.md` is a good reference for structure and tone.
+- **Pipeline with phases**: for multi-step workflows (publishing, data processing), use numbered phases with `ask_user` at transitions. Each phase should be skippable:
+  ```markdown
+  ## Pipeline
+  1. Login → 2. Collect Materials → 3. Style Learning (optional) → 4. Create Content → 5. Publish
+
+  Use `ask_user` before each phase to confirm intent (allow skipping). Use `create_task` to track progress.
+  ```
+
+Keep the body under 500 lines. The `browser-automation` and publisher Skills in `references/skill-examples.md` are good references for structure and tone.
 
 ### Step 4: Write Skill Scripts
 
@@ -243,19 +217,7 @@ Key facts:
 
 #### Examples
 
-**Simple tool — no dependencies:**
-```js
-// ==SkillScript==
-// @name         greet
-// @description  Greet a person by name, returns a greeting object
-// @param        name  string  [required]  Person's name
-// ==/SkillScript==
-
-const { name } = args;
-return { greeting: `Hello, ${name}! Welcome to ScriptCat Agent.` };
-```
-
-**HTTP request — cross-origin fetch:**
+**HTTP request — cross-origin fetch with `GM_xmlhttpRequest`:**
 ```js
 // ==SkillScript==
 // @name         fetch_page_title
@@ -268,20 +230,6 @@ const { url } = args;
 const resp = await GM.xmlHttpRequest({ url, method: "GET" });
 const match = resp.responseText.match(/<title>(.*?)<\/title>/i);
 return { title: match ? match[1] : "No title found", url };
-```
-
-**DOM operation — browser control:**
-```js
-// ==SkillScript==
-// @name         read_active_page
-// @description  Read the current tab's page content. Returns { title, url, content }
-// @param        selector  string  CSS selector to narrow scope (optional)
-// @grant        CAT.agent.dom
-// ==/SkillScript==
-
-const { selector } = args;
-const page = await CAT.agent.dom.readPage({ selector });
-return { title: page.title, url: page.url, content: page.html };
 ```
 
 **Returning attachments — screenshot example:**
@@ -339,14 +287,67 @@ const result = await CAT.agent.skills.call("web-scraper", "fetch_content", { url
 return result;
 ```
 
+**Multi-action script — the dominant architecture pattern:**
+
+Most real Skills combine related operations into a single script using an enum `action` parameter. This is the most common pattern across existing Skills (editor, login, manage_styles, etc.).
+
+```js
+// ==SkillScript==
+// @name         editor
+// @description  Explore or inject content into the editor. explore=DOM structure, inject=write title/body
+// @param        tabId    number                   [required]  Target tab ID
+// @param        action   string[explore,inject]   [required]  Operation to perform
+// @param        title    string                               Article title (inject only)
+// @param        content  string                               Body content (inject only)
+// @grant        CAT.agent.dom
+// @timeout      60000
+// ==/SkillScript==
+
+const { tabId, action } = args;
+
+// CRITICAL: executeScript returns {result, tabId} wrapper — always unwrap
+const unwrap = (v) =>
+  v && typeof v === 'object' && 'result' in v ? v.result : v;
+
+if (action === 'explore') {
+  return unwrap(await CAT.agent.dom.executeScript(`
+    return {
+      title: document.querySelector('#title')?.value || '',
+      editor: !!document.querySelector('[contenteditable="true"]'),
+      buttons: Array.from(document.querySelectorAll('button'))
+        .map(b => ({ text: b.textContent.trim(), disabled: b.disabled }))
+        .filter(b => b.text.length < 20)
+    };
+  `, { tabId }));
+}
+
+if (action === 'inject') {
+  if (!args.title && !args.content) return { error: 'Need title or content' };
+  // ... inject logic (fill fields, paste into editor, etc.)
+  return { title: true, content: true, errors: [] };
+}
+
+return { error: `Invalid action: ${action}, expected: explore, inject` };
+```
+
+> **Key conventions in this pattern:**
+> - `@param action string[val1,val2,...]` — enum syntax restricts values; the LLM sees valid options
+> - `unwrap()` — `executeScript` returns `{ result, tabId }` wrapper, not the raw value. This is the **#1 gotcha** for new Skill authors
+> - Each action validates its own params and returns structured results
+> - Always end with a default `return { error: ... }` for invalid actions
+
 #### Common pitfalls
 
 - Never hardcode API keys or secrets — use `config` frontmatter fields (accessed via `CAT_CONFIG`) for install-time credentials, or `GM.getValue` for runtime-managed secrets
 - Don't return raw full-page HTML — extract and return only the relevant data to save tokens
-- Don't build one mega-script with many params — split into focused single-responsibility scripts
+- Don't build one mega-script with many params — split into focused single-responsibility scripts (but DO combine related operations using the multi-action `action` enum pattern — one script per domain object is fine, e.g. `editor` with explore/inject/upload_cover actions)
 - Don't ignore errors — catch exceptions and return `{ error: "meaningful message" }` so the LLM can react
+- **`executeScript` always needs unwrap** — `CAT.agent.dom.executeScript()` returns `{ result, tabId }`, not the raw value. Define `const unwrap = (v) => v && typeof v === 'object' && 'result' in v ? v.result : v;` at the top of every script that uses `executeScript`
 - **Attachment content field**: when a script returns attachments (files, images), the LLM **cannot see** the attachment contents — it only sees the `content` text field. So `content` must explicitly state what was generated and instruct the LLM not to regenerate it. Example: `content: "Code generation complete. Generated 1 script (attached). Do NOT rewrite the code."`
 - **Leaking tabs** — if a Skill Script opens or navigates to a tab (via `CAT.agent.dom.navigate` or `open_tab`) for an intermediate operation, close it when done. Either close it inside the script itself, or instruct the Agent in SKILL.md to `close_tab` after processing the result. Forgetting this leads to tab buildup that confuses the user and wastes resources
+- **OPFS path conventions** — use `{skill-name}/{category}/{filename}` for organized storage (e.g. `wechat-publisher/styles/writing/profile.json`). Sanitize user-provided names: `name.replace(/[\/\\:*?"<>|]/g, '_')`
+- **`ask_user` before irreversible actions** — publishing, deleting, sending. Explicitly warn the user in the `ask_user` message (e.g. "⚠️ 发布后不可撤回"). Some platforms have no confirmation dialog — the action is instant
+- **Large string injection** — `executeScript` has a string size limit for inline code. For large content (>30KB HTML), use chunked injection via a hidden textarea. See `skill-script-api.md` → Common Patterns for the technique
 
 ### Step 5: Verify
 
@@ -390,50 +391,33 @@ If the user wants to iterate, go back to the relevant step. Don't rewrite everyt
 
 ## Improving an existing Skill
 
-When the user brings an existing Skill to improve, follow a different approach:
-
 ### 1. Read first
+Read the existing SKILL.md and all scripts/ before suggesting changes.
 
-Read the existing SKILL.md and all scripts/ before suggesting changes. Understand what the Skill currently does and how it's structured.
+### 2. Diagnose & fix
 
-### 2. Diagnose
+Identify the problem category, then apply targeted fixes:
 
-Identify the category of problem:
-
-- **Trigger issues** — Skill doesn't fire when it should, or fires when it shouldn't → fix the description (check length, keywords, specificity)
-- **Bad script output** — scripts return wrong or useless data → fix the Skill Script logic or return structure
-- **Unclear prompt** — Agent doesn't follow the intended workflow → rewrite the SKILL.md body with clearer instructions, better examples, or explicit branching
-- **Missing capability** — Skill can't do something it should → add a new Skill Script or reference
-
-Use this checklist to systematically review the Skill:
-
-#### Optimization checklist
-
-- **Description trigger precision**: Does the description (30-80 words) cover typical user phrasings? Does it false-trigger on unrelated prompts? Check both positive and negative triggers.
-- **Built-in tool overlap**: Does any Skill Script duplicate `web_fetch`, `list_tabs`, `execute_script`, or other built-in tools? If so, remove it and reference the built-in in SKILL.md instead.
-- **Tool granularity**: Is there a mega-script doing too many things? Split into focused single-responsibility scripts. Conversely, are there too many tiny scripts that should be one?
-- **Prompt workflow**: Does the SKILL.md have clear branching logic? Are error/edge-case paths covered, or only the happy path?
-- **Examples**: Are there input→output examples? Do they cover the main scenarios (including error cases)?
-- **Error handling**: Do scripts return `{ error: "..." }` rather than throwing? Does SKILL.md guide the Agent on how to handle errors?
-- **References usage**: Is the SKILL.md body over 500 lines? Should large docs move to `references/` for on-demand loading?
-- **Tab cleanup**: Does the Skill open or navigate to tabs during its workflow? Does it instruct the Agent to `close_tab` intermediate tabs once their purpose is fulfilled? Leaking tabs is a common issue in browser-related Skills.
-
-#### Common optimization patterns
-
-- **Outdated documentation** — API signatures or parameter descriptions in SKILL.md don't match actual Skill Script `@param` headers → sync them
-- **Description keyword gaps** — add trigger phrases the user would naturally say (e.g., "fill forms" for browser-automation) while keeping the description under 80 words
-- **Built-in tool hints** — when a workflow uses both built-in tools and Skill Scripts, explicitly state in SKILL.md which steps use built-in tools (e.g., "Use the built-in `list_tabs` tool to find tabIds")
+| Problem | Diagnosis | Fix |
+|---------|-----------|-----|
+| Skill doesn't trigger | Description too vague or missing keywords | Rewrite description (30-80 words, add trigger phrases) |
+| Skill false-triggers | Description too broad | Narrow scope, remove generic keywords |
+| Agent ignores workflow | SKILL.md instructions unclear | Add branching logic, examples, explicit tool references |
+| Script returns wrong data | Logic error or bad return structure | Fix script, verify `@param` matches SKILL.md docs |
+| Missing capability | No script for the operation | Add new Skill Script or reference |
+| Built-in overlap | Script duplicates `web_fetch`, `list_tabs`, etc. | Remove script, reference built-in tool in SKILL.md |
+| SKILL.md too long | Over 500 lines | Move large docs to `references/` with explicit read conditions |
+| Tab leakage | Missing `close_tab` after intermediate ops | Add tab cleanup instructions to SKILL.md |
 
 ### 3. Targeted edits
-
-Fix only what's broken. Don't rewrite the entire Skill when a description tweak or one tool fix would solve the problem. Show the user a before/after diff of what you changed and why.
+Fix only what's broken — don't rewrite the entire Skill when a description tweak or one script fix solves the problem. Show the user before/after of what you changed and why.
 
 ## Reference files
 
-Use `read_reference` to load these when the specific condition applies:
+Load on demand — don't read all upfront. Don't dump their content into the Skill you're creating.
 
-- **`scriptcat.d.ts`** — read when you need exact API signatures, method parameters, or return types for `CAT.agent.conversation`, `CAT.agent.dom`, `CAT.agent.task`, `CAT.agent.skills`, `CAT.agent.model`, `CAT.agent.opfs`, or `CAT_CONFIG`. This is the authoritative source of truth.
-- **`skill-script-api.md`** — read when writing Skill Scripts and you need to check metadata syntax (`@param`, `@grant`, `@timeout`, `@require`), return format details (especially attachments), or GM API usage patterns.
-- **`skill-examples.md`** — read when deciding how to structure a SKILL.md prompt, or when you want to show the user what a well-written Skill looks like. Contains analysis of the `browser-automation` Skill and design pattern templates (prompt-only, tool-set, references-based).
-
-Don't load all three upfront. Read them on demand when the specific need arises. Don't dump their content into the Skill you're creating — they're for your reference, not the user's.
+| Reference | When to read |
+|-----------|-------------|
+| `scriptcat.d.ts` | Need exact API signatures for `CAT.agent.*` or `CAT_CONFIG` — authoritative type definitions |
+| `skill-script-api.md` | Writing Skill Scripts — metadata syntax (`@param`, `@grant`), return formats, GM APIs, **Common Patterns** (unwrap, chunked injection, file upload, retry/polling, multi-action, PasteHTML, React inputs) |
+| `skill-examples.md` | Structuring a SKILL.md prompt — analysis of `browser-automation` (tool-set), publisher Skills (pipeline), `file-parser` (dispatch), plus design pattern templates |
