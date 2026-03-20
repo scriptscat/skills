@@ -354,9 +354,9 @@ const writeResult = await CAT.agent.opfs.write("reports/daily.txt", "Report cont
 const readResult = await CAT.agent.opfs.read("reports/daily.txt");
 // readResult: { path, content, size }
 
-// Read a binary file as blob URL
-const blobResult = await CAT.agent.opfs.read("images/chart.png", "bloburl");
-// blobResult: { path, blobUrl, size, mimeType }
+// Read a file as Blob (for binary processing / re-uploading)
+const blobResult = await CAT.agent.opfs.read("images/chart.png", "blob");
+// blobResult: { path, data: Blob, size, mimeType }
 
 // List files and directories
 const entries = await CAT.agent.opfs.list("reports/");
