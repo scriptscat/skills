@@ -8,7 +8,11 @@
 
 const modeJson = JSON.stringify(args.mode);
 
-const result = await CAT.agent.dom.executeScript(
+// executeScript 返回 {result, tabId} 包装对象，提取实际值
+const unwrap = (v) =>
+  v && typeof v === 'object' && 'result' in v ? v.result : v;
+
+const result = unwrap(await CAT.agent.dom.executeScript(
   `
   var mode = ${modeJson};
 
@@ -70,6 +74,6 @@ const result = await CAT.agent.dom.executeScript(
   return { error: 'Invalid mode. Use "list" or "detail".' };
   `,
   { tabId: args.tabId }
-);
+));
 
 return result;

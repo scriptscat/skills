@@ -30,7 +30,7 @@ You now have tools to control the browser. They are split into **primitive tools
 
 ## When to use `browser_action` vs `get_tab_content`
 
-- **`get_tab_content`** (built-in, always available): Read page text as markdown — for reading articles, extracting text content, or LLM summarization.
+- **`get_tab_content`** (built-in, always available): Read page text and extract information via LLM — requires `prompt` to specify what to extract. Best for reading articles, extracting text content, or summarizing.
 - **`browser_action`** (this skill): Analyze page structure — for locating interactive elements (buttons, inputs, links) and getting CSS selectors to use with `smart_fill`, `click_and_wait`, etc.
 
 Rule of thumb: if your next step is to **read/summarize**, use `get_tab_content`; if your next step is to **click/fill/interact**, use `browser_action`.

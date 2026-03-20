@@ -5,7 +5,11 @@
 // @grant        CAT.agent.dom
 // ==/SkillScript==
 
-const result = await CAT.agent.dom.executeScript(
+// executeScript 返回 {result, tabId} 包装对象，提取实际值
+const unwrap = (v) =>
+  v && typeof v === 'object' && 'result' in v ? v.result : v;
+
+const result = unwrap(await CAT.agent.dom.executeScript(
   `
   var contentEl = document.querySelector('#js_content, .rich_media_content');
   if (!contentEl) return { error: '未找到文章内容区域' };
@@ -170,6 +174,6 @@ const result = await CAT.agent.dom.executeScript(
   return styles;
   `,
   { tabId: args.tabId }
-);
+));
 
 return result;

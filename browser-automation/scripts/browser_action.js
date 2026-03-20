@@ -1,10 +1,11 @@
 // ==SkillScript==
 // @name         browser_action
-// @description  Analyze page content using a sub-agent — returns CSS selectors, extracted data, or action suggestions. Does NOT perform any clicks or form fills. Pass a specific scenario describing what to find or extract (e.g. "find the search input and submit button selectors", "extract the first 5 search results with titles and links").
+// @description  Analyze page content using a sub-agent — returns CSS selectors, extracted data, or action suggestions. Does NOT perform any clicks or form fills. Pass a specific and focused scenario describing what to find or extract. Avoid combining multiple unrelated checks into one scenario; split them into separate calls if needed. Good: "find the search input selector" / "check if the user avatar is visible in the top nav". Bad: "check login status, find all buttons, and extract the page title".
 // @param        scenario string [required] What to analyze or extract from the page — be specific
 // @param        tabId number Target tab ID (defaults to the active tab)
 // @grant        CAT.agent.conversation
 // @grant        CAT.agent.dom
+// @grant        CAT.agent.model
 // ==/SkillScript==
 
 const SYSTEM_PROMPT = `你是一个页面分析专家。你的任务是读取和分析页面内容，返回精简的结果给调用者。
@@ -39,6 +40,8 @@ const SYSTEM_PROMPT = `你是一个页面分析专家。你的任务是读取和
 4. **如需局部细节**：仅在骨架被截断或需要特定区域更多细节时，才用 **read_page** 传 selector 缩小范围读取
 
 **最多调用 3 次工具，然后立即回复结果**。即使信息不完整，也要基于已有结果回复，说明哪些信息未能获取。如果骨架已经足够回答问题，**直接回复，不要调用任何工具**。
+
+**硬性限制**：如果你已经调用了 5 次工具，**必须立即停止调用工具，基于已有信息回复**。绝对不允许超过 5 次工具调用。
 
 ## execute_script 编写规范
 
@@ -189,13 +192,20 @@ try {
   return `错误：读取页面骨架失败: ${e.message || e}`;
 }
 
+// 优先使用摘要模型（轻量、低成本），回退到默认模型
+let summaryModel;
+try {
+  summaryModel = (await CAT.agent.model.getSummary()) || undefined;
+} catch (_) {}
+
 // 创建无状态子 conversation，只提供分析类工具
 let conv;
 try {
   conv = await CAT.agent.conversation.create({
     ephemeral: true,
     system: SYSTEM_PROMPT,
-    maxIterations: 5,
+    model: summaryModel,
+    maxIterations: 8,
     tools: [
       {
         name: "read_page",

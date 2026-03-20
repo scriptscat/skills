@@ -2,6 +2,7 @@
 // @name         generate_image
 // @description  生成图片（封面图、文章配图等）。自动查找支持图片生成的模型（通过 supportsImageOutput 标记），生成后保存到 OPFS 并返回
 // @param        prompt string [required] 图片描述/生成提示词
+// @param        style string 风格描述，确保同一组图片风格一致（如"扁平插画、暖色调、圆角卡通风"），会自动拼接到 prompt 前
 // @param        savePath string 保存路径（相对 OPFS workspace），默认 social-publisher/images/{timestamp}.png
 // @grant        CAT.agent.model
 // @grant        CAT.agent.conversation
@@ -30,7 +31,12 @@ const conv = await CAT.agent.conversation.create({
   ephemeral: true,
 });
 
-const reply = await conv.chat(args.prompt);
+// 拼接风格描述到 prompt，确保风格一致性
+const finalPrompt = args.style
+  ? `[风格要求] ${args.style}\n\n[图片内容] ${args.prompt}`
+  : args.prompt;
+
+const reply = await conv.chat(finalPrompt);
 
 // 3. 从回复中提取图片 block
 let imageBlock = null;

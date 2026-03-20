@@ -86,9 +86,17 @@
 
 发布页面 URL：`https://creator.xiaohongshu.com/publish/publish`
 
-1. 默认显示「上传视频」tab，需点击「上传图文」tab 切换
-2. 上传至少 1 张图片后，编辑器才会出现
-3. 图片上传可通过 `input[type="file"][accept*="jpg"]` + `DataTransfer` 注入
+**⚠️ 必须按顺序执行，不可跳步：**
+
+1. `navigate` 打开发布页 — 此时页面只有 tab 栏（上传视频/上传图文/写长文），**编辑器、标题框、发布按钮均不存在**
+2. **立即调用 `editor`（action=prepare）** — 自动点击「上传图文」tab + 上传图片（或占位图）
+3. 等待 `prepare` 返回 `success: true` 后，编辑器才可用
+4. **在 prepare 完成前不要使用 `browser_action`、`screenshot` 或 `editor`(explore) 分析页面**，否则会因找不到元素陷入死循环
+
+技术细节：
+- tab 选择器：`.creator-tab`（text = "上传图文"）
+- 图片上传：`input[type="file"][accept*="jpg"]` + `DataTransfer` 注入
+- 编辑器出现标志：`.tiptap.ProseMirror` 存在
 
 ### 编辑器关键元素
 

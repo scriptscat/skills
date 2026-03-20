@@ -23,9 +23,9 @@ The Agent already has these tools **without any Skill**. Don't create Skill Scri
 
 | Tool | What it does |
 |------|-------------|
-| `web_fetch` | Fetch a URL, return text content (with optional LLM prompt to summarize) |
+| `web_fetch` | Fetch a URL, return text content (requires `prompt` to extract/summarize via LLM) |
 | `web_search` | Search the web, return results with title/URL/snippet |
-| `get_tab_content` | Read a browser tab's rendered content as cleaned markdown |
+| `get_tab_content` | Read a browser tab's content and extract information via LLM (requires `prompt`) |
 | `list_tabs` | List open tabs (filterable by URL/title pattern) |
 | `open_tab` / `close_tab` / `activate_tab` | Tab management |
 | `execute_script` | Execute JS in a page tab or sandbox (30s timeout) |

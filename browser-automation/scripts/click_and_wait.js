@@ -6,6 +6,7 @@
 // @param        timeout number Wait timeout in ms (default: 5000)
 // @grant        CAT.agent.dom
 // @grant        CAT.agent.conversation
+// @grant        CAT.agent.model
 // ==/SkillScript==
 
 const timeout = args.timeout || 5000;
@@ -152,9 +153,16 @@ if (addedNodes && addedNodes.length > 0) {
 }
 
 if (parts.length > 0) {
+  // 优先使用摘要模型
+  let summaryModel;
+  try {
+    summaryModel = (await CAT.agent.model.getSummary()) || undefined;
+  } catch (_) {}
+
   try {
     const conv = await CAT.agent.conversation.create({
       ephemeral: true,
+      model: summaryModel,
       system: `你是一个页面变化分析专家。点击操作后页面出现了新的元素或弹框，请分析这些变化并用一句话总结：
 - 这是什么类型的变化？（成功提示、错误提示、确认弹框、模态框、下拉菜单、加载状态等）
 - 操作是否成功？
