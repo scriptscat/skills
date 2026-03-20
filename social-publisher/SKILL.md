@@ -8,217 +8,204 @@ config:
     default: false
 ---
 
-# 新媒体运营助手
+# Social Media Publishing Assistant
 
-你是一个多平台新媒体运营助手，能够完成从素材收集、内容创作到发布与互动管理的全流程。当前支持：
-- **微信公众号** — 图文文章（HTML + inline style）
-- **小红书** — 图文笔记（图片 + 纯文本）
+You are a multi-platform social media assistant handling the full pipeline: material collection, content creation, image generation, and publishing. Supported platforms:
+- **WeChat Official Account (微信公众号)** — HTML articles with inline styles
+- **Xiaohongshu (小红书)** — Image-first notes with plain text
 
-**前置依赖**：本 Skill 依赖 `browser-automation` Skill 的浏览器操作工具。开始前请先 `load_skill("browser-automation")` 获取 `browser_action`、`smart_fill`、`click_and_wait` 等工具。
-
-## 整体流程
+## Pipeline
 
 ```
-1. 确定平台 → 2. 登录 → 3. 素材收集 → 4. 风格学习（可选）→ 5. 内容创作 → 6. 发布/保存草稿
+1. Platform → 2. Login → 3. Materials → 4. Style Learning (optional) → 5. Content Creation → 6. Publish
 ```
 
-每个阶段开始前用 `ask_user` 确认用户意图，允许跳过。用 `create_task` 为每个阶段创建任务跟踪进度。
+Use `ask_user` before each phase to confirm intent (allow skipping). Use `create_task` to track progress.
 
 ---
 
-## 阶段 1：确定平台
+## Phase 1: Platform Selection
 
-用 `ask_user` 询问目标发布平台。如果用户消息中已明确提到平台则跳过询问。
+Use `ask_user` to ask the target platform. Skip if already clear from the user's message.
 
-各平台内容格式差异：
-
-| 平台 | 内容格式 | 核心要素 |
-|------|----------|----------|
-| 微信公众号 | HTML + inline style | 标题、正文、摘要、封面图 |
-| 小红书 | 纯文本 + 图片 | 图片（≥1张）、标题（≤20字）、正文、话题标签 |
+| Platform | Format | Key Elements |
+|----------|--------|-------------|
+| WeChat | HTML + inline style | Title, body, digest, cover image |
+| Xiaohongshu | Plain text + images | Images (≥1), title (≤20 chars), body, hashtags |
 
 ---
 
-## 阶段 2：登录
+## Phase 2: Login
 
-1. `navigate` 打开平台页面：
-   - 微信：`https://mp.weixin.qq.com/`
-   - 小红书：`https://creator.xiaohongshu.com/`
-2. 调用 `login` 脚本（action=check）检测登录状态
-   - **已登录** → 进入下一阶段
-   - **未登录** → 脚本会自动截图返回二维码页面，展示给用户，提示用户扫码
-3. 调用 `login` 脚本（action=wait）等待登录完成（内部轮询，最多 120 秒）
-
----
-
-## 阶段 3：素材收集
-
-用 `ask_user` 询问素材来源（可多选）：
-- 从平台历史内容中学习
-- 从指定 URL 收集
-- 使用搜索引擎搜索
-
-**并行处理**：当有多个素材来源时，使用 `CAT.agent.conversation.create()` 创建子 Agent 并行处理各来源的收集任务。
-
-### 从历史内容收集
-
-**微信公众号**：
-1. 在后台菜单点击「内容与互动」→「发表记录」
-2. 用 `extract_articles`（mode=list）提取文章列表
-3. 逐一打开文章阅读链接（`mp.weixin.qq.com/s/...` 格式）
-4. 用 `extract_articles`（mode=detail）提取内容 + `extract_styles` 提取排版样式
-5. 保存到 OPFS `social-publisher/materials/`
-
-**小红书**：
-1. 在创作者中心找到「内容管理」或「笔记管理」
-2. 用 `browser_action` 分析页面结构，提取历史笔记列表
-3. 逐一打开笔记，用 `browser_action` 提取文字内容和风格
-
-### 从 URL 收集
-- 微信文章有安全验证，**不能用 `web_fetch`**，必须在浏览器中打开后用脚本提取
-- 其他 URL 可用 `web_fetch` 抓取
-
-### 搜索引擎收集
-- `web_search` 搜索 → 筛选 → `web_fetch` 抓取详情
-
-最终输出素材摘要，`ask_user` 确认是否充分。
+1. Open the platform page:
+   - WeChat: `https://mp.weixin.qq.com/`
+   - Xiaohongshu: `https://creator.xiaohongshu.com/`
+2. Call `login` script (action=check) to detect login status
+   - **Logged in** → proceed to next phase
+   - **Not logged in** → script auto-screenshots the QR code and returns it to the user
+3. Call `login` script (action=wait) to poll until login completes (up to 120s)
 
 ---
 
-## 阶段 4：风格学习（可选）
+## Phase 3: Material Collection
 
-> **仅在用户要求学习风格时执行。** 否则跳过，使用内置默认样式。
+Use `ask_user` to ask material sources (multi-select):
+- Learn from platform history
+- Collect from specific URLs
+- Search the web
 
-**目标**：从历史内容中提炼写作风格和排版规范。
+**Parallel processing**: When multiple sources exist, use `CAT.agent.conversation.create()` to spawn sub-agents for parallel collection.
 
-### 4.1 写作风格分析
+### From History
 
-用 `read_reference("social-publisher", "style_analysis_template")` 获取分析维度，逐篇分析后归纳：
-- 风格基调、标题风格、开头/结尾模式
-- 段落结构、语言风格、人称、正式度
+**WeChat**: Navigate to「内容与互动」→「发表记录」→ use `extract_articles` (mode=list) → open each article → use `extract_articles` (mode=detail) + `extract_styles` → save to OPFS `social-publisher/materials/`
 
-### 4.2 排版风格分析（微信公众号）
+**Xiaohongshu**: Navigate to「内容管理」→ use `browser_action` to extract note list → open each note → extract text and style
 
-通过浏览器内打开文章，用 `extract_styles` 提取 computed style 和 inline style，分析：
-- 颜色体系、字号体系、间距规范、强调方式
-- 引用块/列表/分割线样式
+### From URLs
+- WeChat articles have security checks — **cannot use `web_fetch`**, must open in browser and extract via script
+- Other URLs: use `web_fetch` (with `prompt` describing what to extract)
 
-### 4.3 输出风格指南
+### From Search
+- `web_search` → filter results → `web_fetch` (with `prompt`) for details
 
-生成完整风格指南，保存到 OPFS `social-publisher/style_guide.md`，展示给用户确认。
+Output a material summary, use `ask_user` to confirm sufficiency.
 
 ---
 
-## 阶段 5：内容创作
+## Phase 4: Style Learning (Optional)
 
-1. `ask_user` 确认：主题、目标读者、重点内容
-2. 从 OPFS 读取素材和风格指南（如有）
-3. **按平台生成内容**：
+> **Only execute when the user explicitly requests style learning.** Otherwise skip and use built-in defaults.
 
-### 微信公众号
-- 输出 HTML + inline style 格式（公众号过滤 class）
-- 有风格指南时严格按指南排版，无指南时使用默认样式
-- 需要配图时用 `generate_image` 脚本生成
+**Goal**: Extract writing style and layout conventions from historical content.
 
-### 小红书
-- 标题：≤20 字，吸睛口语化
-- 正文：纯文本，分段简短，善用 emoji
-- 图片：用 `generate_image` 生成配图（小红书以图为主，至少生成 1 张）
-- 话题标签放在文末（#话题#）
+### 4.1 Writing Style
+Use `read_reference("social-publisher", "style_analysis_template")` for analysis dimensions. Analyze each article and synthesize: tone, title patterns, opening/closing patterns, paragraph structure, formality level.
 
-4. 保存草稿到 OPFS `social-publisher/drafts/`
-5. 展示摘要，`ask_user` 确认或修改
-6. 支持多轮迭代
+### 4.2 Layout Style (WeChat only)
+Open articles in browser, use `extract_styles` to extract computed/inline styles. Analyze: color scheme, font sizes, spacing, emphasis methods, blockquote/list/divider styles.
 
-### 微信公众号默认样式
+### 4.3 Output
+Generate a complete style guide, save to OPFS `social-publisher/style_guide.md`, show to user for confirmation.
 
-无风格指南时使用（简洁现代风格）：
+---
+
+## Phase 5: Content Creation
+
+1. Use `ask_user` to confirm: topic, target audience, key points
+2. Read materials and style guide from OPFS (if available)
+3. **Generate platform-specific content**:
+
+### WeChat
+- Output HTML + inline style (WeChat strips CSS classes)
+- Follow style guide if available, otherwise use default styles (see below)
+- Use `generate_image` for illustrations when needed
+
+### Xiaohongshu
+- Title: ≤20 Chinese characters, catchy and conversational
+- Body: plain text, short paragraphs, use emoji liberally
+- Images: use `generate_image` (image-first platform, generate ≥1 image). **All text rendered in images MUST be in Chinese**
+- Hashtags at the end (#话题#)
+
+4. Save draft to OPFS `social-publisher/drafts/`
+5. Show summary, use `ask_user` for confirmation or revision
+6. Support iterative refinement
+
+### WeChat Default Styles
+
+Used when no style guide is available (clean modern style):
 
 ```html
-<!-- 大标题 -->
+<!-- Section title -->
 <h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #07C160;">标题</h2>
 
-<!-- 小标题 -->
+<!-- Subsection title -->
 <h3 style="font-size: 17px; font-weight: bold; color: #1a1a1a; margin: 24px 0 12px; padding-left: 12px; border-left: 4px solid #07C160;">小标题</h3>
 
-<!-- 正文段落 -->
+<!-- Body paragraph -->
 <p style="font-size: 15px; color: #333; line-height: 2; margin-bottom: 16px; letter-spacing: 0.5px;">正文</p>
 
-<!-- 强调文字 -->
+<!-- Emphasis -->
 <strong style="color: #07C160;">重点</strong>
 
-<!-- 引用块 -->
+<!-- Blockquote -->
 <blockquote style="border-left: 3px solid #07C160; padding: 12px 16px; margin: 20px 0; background: #f8faf8; color: #666; font-size: 14px; line-height: 1.8; border-radius: 0 4px 4px 0;">
   引用内容
 </blockquote>
 
-<!-- 列表 -->
+<!-- List -->
 <ul style="padding-left: 24px; margin-bottom: 16px;">
   <li style="font-size: 15px; color: #333; line-height: 2; margin-bottom: 8px;">项目</li>
 </ul>
 
-<!-- 分割线 -->
+<!-- Divider -->
 <hr style="border: none; border-top: 1px solid #e8e8e8; margin: 28px 0;">
 ```
 
 ---
 
-## 阶段 6：发布
+## Phase 6: Publish
 
-### 6.1 打开编辑器
+### 6.1 Open Editor
 
-- 微信：在首页找到「新的创作」区域，`click_and_wait` 点击 `.new-creation__menu-item` 中文本为「文章」的项
-- 小红书：`navigate` → `https://creator.xiaohongshu.com/publish/publish`
+- **WeChat**: Find「新的创作」on the homepage, `click_and_wait` on the `.new-creation__menu-item` containing text「文章」
+- **Xiaohongshu**: Open `https://creator.xiaohongshu.com/publish/publish`, then **immediately call `editor` (action=prepare, imagePath=OPFS_PATH)**
+  - `imagePath`: the `savedTo` path returned by `generate_image` (e.g. `social-publisher/images/xxx.png`) — the script reads from OPFS and uploads automatically
+  - For multiple images, call `prepare` once per image
 
-用 `editor`（action=explore）确认编辑器 DOM 结构。
+> ⚠️ **CRITICAL for Xiaohongshu**: The publish page initially only shows tabs (上传视频/上传图文/写长文). **The title input, editor, and publish button DO NOT EXIST yet.** You MUST call `editor` (action=prepare) first to click the「上传图文」tab and upload an image. Only then does the editor appear. **DO NOT use `browser_action`, `screenshot`, or any page analysis before prepare completes** — you will enter an infinite loop finding no elements.
 
-### 6.2 注入内容
+### 6.2 Confirm Editor
 
-用 `editor`（action=inject）注入标题和正文。
+Use `editor` (action=explore) to confirm the editor DOM structure. **Only after 6.1 prepare returns successfully.**
 
-注入失败时排查：
-1. `editor`（action=explore）重新探索 DOM 结构
-2. 用 `browser_action` 分析页面找到正确元素
-3. 参考 `read_reference("social-publisher", "platform_guide")`
+### 6.3 Cover / Images
 
-### 6.3 封面图/配图
+1. Use `generate_image` to create cover and illustrations
+2. **WeChat**: Use `editor` (action=upload_cover, imageData=base64) to upload the cover image
+3. **Xiaohongshu**: Images are already uploaded during `prepare` via `imagePath`. For additional images, call `prepare` again with a different `imagePath`
+4. **If no image generation model is available**: Use `ask_user` to prompt the user to provide images manually
 
-1. **优先用 `generate_image` 脚本生成**封面图/配图
-2. **微信公众号**：使用 `editor`（action=upload_cover, imageData=图片base64）自动上传封面图，全程无需用户手动操作
-3. **小红书**：图片需要用户手动上传（通过 `editor` action=prepare 可自动注入到 file input）
-4. **如果没有可用的图片生成模型**：`ask_user` 提示用户自行准备图片
+### 6.4 Inject Content
 
-### 6.4 预览确认
+Use `editor` (action=inject) to inject title and body.
 
-1. `screenshot` 截取编辑器当前状态，展示给用户查看
-2. `ask_user` 确认：内容是否正确、排版是否满意、封面图/配图是否已设置
-3. 明确告知用户接下来是保存草稿还是发布
+If injection fails:
+1. Use `editor` (action=explore) to re-examine the DOM
+2. Use `browser_action` to find the correct elements
+3. Refer to `read_reference("social-publisher", "platform_guide")`
 
-### 6.5 保存/发布
+### 6.5 Preview
 
-- **保存草稿**：
-  - 微信：`click_and_wait` 点击 `#js_submit`
-  - 小红书：`click_and_wait` 点击「暂存离开」按钮
-- **发布**：需 `ask_user` 明确确认后才能点击
-  - ⚠️ **小红书点击发布会直接发出，没有二次确认弹窗！** 必须在点击前通过 `ask_user` 确认
-  - ⚠️ 发布不可撤回，`ask_user` 中**必须明确警告用户**
-  - 确认后 `click_and_wait` 点击发布按钮
+1. Use `screenshot` to capture the editor state, show to user
+2. Use `ask_user` to confirm: content correctness, layout, cover/images
+3. Clearly state whether the next step is saving a draft or publishing
+
+### 6.6 Save / Publish
+
+- **Save draft**:
+  - WeChat: `click_and_wait` on `#js_submit`
+  - Xiaohongshu: `click_and_wait` on the button with text「暂存离开」
+- **Publish**: Requires explicit `ask_user` confirmation first
+  - ⚠️ **Xiaohongshu publish is INSTANT — no confirmation dialog!** You MUST confirm with `ask_user` before clicking
+  - ⚠️ Publishing is irreversible — **explicitly warn the user** in `ask_user`
+  - After confirmation, `click_and_wait` on the publish button
 
 ---
 
-## 注意事项
+## Notes
 
-### DOM 选择器可能过时
-平台会更新页面结构。选择器失效时：
-1. `editor`（action=explore）或 `browser_action` 重新分析 DOM
-2. 参考 `read_reference("social-publisher", "platform_guide")`
+### Selectors May Be Outdated
+Platforms update their DOM. When selectors fail:
+1. Use `editor` (action=explore) or `browser_action` to re-analyze
+2. Refer to `read_reference("social-publisher", "platform_guide")`
 
-### 错误恢复
-- 每阶段产出物保存到 OPFS，中断不丢失
-- 登录过期 → 重新走登录流程
-- 编辑器操作失败 → 用 `editor`(explore) 和 `browser_action` 程序化分析 DOM，尝试替代方案
+### Error Recovery
+- Each phase saves outputs to OPFS — interruptions don't lose progress
+- Login expired → re-run login flow
+- Editor injection failed → use `editor` (explore) and `browser_action` to find alternative selectors
 
-### 安全
-- 不存储用户密码或 cookie
-- 发布前必须用户确认
-- 敏感操作绝不自动执行
+### Safety
+- Never store user passwords or cookies
+- Always confirm with user before publishing
+- Never auto-execute irreversible actions

@@ -12,11 +12,18 @@
 const platform = args.platform;
 const tabId = args.tabId;
 
+// executeScript 返回 {result, tabId} 包装对象，提取实际值
+const unwrap = (v) =>
+  v && typeof v === 'object' && 'result' in v ? v.result : v;
+
 // 各平台的登录检测配置
 const platformConfig = {
   wechat: {
     loggedInSelectors: ['.weui-desktop-layout', '.acount_box-nickname'],
-    loginPageSelectors: ['.login__type__container__scan', '.login__type__container'],
+    loginPageSelectors: [
+      '.login__type__container__scan',
+      '.login__type__container',
+    ],
     getNickname: `
       var el = document.querySelector('.acount_box-nickname, .weui-desktop-account__nickname');
       return el ? el.textContent.trim() : null;
@@ -31,7 +38,6 @@ const platformConfig = {
     getNickname: `
       var el = document.querySelector('.user-info');
       if (el) {
-        // user-info 包含 "用户名 退出登录"，取第一个文本节点
         var text = el.textContent.trim();
         return text.replace(/\\s*退出登录.*$/, '').trim() || null;
       }
@@ -43,7 +49,9 @@ const platformConfig = {
 
 const config = platformConfig[platform];
 if (!config) {
-  return { error: '不支持的平台: ' + platform + '，可选: wechat, xiaohongshu' };
+  return {
+    error: '不支持的平台: ' + platform + '，可选: wechat, xiaohongshu',
+  };
 }
 
 // 通用登录检测函数
@@ -51,50 +59,87 @@ async function checkLogin() {
   const loggedInSels = JSON.stringify(config.loggedInSelectors);
   const loginPageSels = JSON.stringify(config.loginPageSelectors);
 
-  const status = await CAT.agent.dom.executeScript(
-    `
+  const statusInfo = unwrap(
+    await CAT.agent.dom.executeScript(
+      `
     var loggedInSels = ${loggedInSels};
     var loginPageSels = ${loginPageSels};
 
+    var status = 'unknown';
     for (var i = 0; i < loggedInSels.length; i++) {
-      if (document.querySelector(loggedInSels[i])) return 'logged_in';
+      if (document.querySelector(loggedInSels[i])) { status = 'logged_in'; break; }
     }
-    for (var j = 0; j < loginPageSels.length; j++) {
-      if (document.querySelector(loginPageSels[j])) return 'need_login';
+    if (status === 'unknown') {
+      for (var j = 0; j < loginPageSels.length; j++) {
+        if (document.querySelector(loginPageSels[j])) { status = 'need_login'; break; }
+      }
     }
-    return 'unknown';
+    return { status: status, url: window.location.href };
     `,
-    { tabId }
+      { tabId }
+    )
   );
 
+  const status = statusInfo ? statusInfo.status : 'unknown';
+  let pageUrl = statusInfo ? statusInfo.url : '';
+
+  // 页面可能未加载完毕导致 executeScript 返回空，从 tab 信息获取 URL
+  if (!pageUrl) {
+    try {
+      const tabs = await CAT.agent.dom.listTabs();
+      const tab = tabs.find((t) => t.tabId === tabId);
+      if (tab && tab.url) pageUrl = tab.url;
+    } catch (_) {}
+  }
+
+  // URL-based fallback for xiaohongshu: if on creator pages (not /login), assume logged in
+  if (status === 'unknown' && platform === 'xiaohongshu') {
+    if (pageUrl.includes('creator.xiaohongshu.com') && !pageUrl.includes('/login')) {
+      return {
+        status: 'logged_in',
+        platform,
+        nickname: null,
+        url: pageUrl,
+        note: '通过 URL 推断已登录（创作者页面无登录提示）',
+      };
+    }
+  }
+
   if (status === 'logged_in') {
-    const nickname = await CAT.agent.dom.executeScript(config.getNickname, { tabId });
-    const extra = await CAT.agent.dom.executeScript(config.getExtra, { tabId });
+    const nickname = unwrap(
+      await CAT.agent.dom.executeScript(config.getNickname, { tabId })
+    );
+    const extra = unwrap(
+      await CAT.agent.dom.executeScript(config.getExtra, { tabId })
+    );
     return {
       status: 'logged_in',
       platform,
       nickname,
-      url: await CAT.agent.dom.executeScript('return window.location.href;', { tabId }),
-      ...extra,
+      url: pageUrl || unwrap(
+        await CAT.agent.dom.executeScript('return window.location.href;', {
+          tabId,
+        })
+      ),
+      ...(extra || {}),
     };
   }
 
-  return { status: status, platform };
+  return { status: status, platform, url: pageUrl };
 }
 
 // 小红书：切换到二维码登录模式
-// 默认显示短信登录，需要点击切换图标（login-box-container 内约 64x64 的 img）
 async function switchToQrMode() {
   if (platform !== 'xiaohongshu') return;
 
-  await CAT.agent.dom.executeScript(
-    `
+  unwrap(
+    await CAT.agent.dom.executeScript(
+      `
     var container = document.querySelector('.login-box-container');
     if (!container) return false;
 
     var imgs = container.querySelectorAll('img');
     for (var i = 0; i < imgs.length; i++) {
-      // 切换图标大约 50-80px，二维码大约 120-200px
       if (imgs[i].width >= 50 && imgs[i].width <= 80) {
         imgs[i].click();
         return true;
@@ -102,10 +147,10 @@ async function switchToQrMode() {
     }
     return false;
     `,
-    { tabId }
+      { tabId }
+    )
   );
 
-  // 等待二维码渲染
   await new Promise((resolve) => setTimeout(resolve, 500));
 }
 
@@ -120,24 +165,40 @@ if (args.action === 'check') {
   // 未登录：尝试切换到二维码模式，然后截图二维码区域
   await switchToQrMode();
 
-  // 各平台的二维码区域选择器
   const qrSelectors = {
     wechat: '.login__type__container__scan',
     xiaohongshu: '.login-box-container',
   };
   const qrSelector = qrSelectors[platform];
 
-  const screenshot = await CAT.agent.dom.screenshot({
-    tabId,
-    selector: qrSelector,
-  });
-  if (screenshot) {
-    return {
-      ...result,
-      message: '请扫描二维码登录' + (platform === 'wechat' ? '微信公众号' : '小红书'),
-      content: '请扫描二维码登录',
-      attachments: [screenshot],
-    };
+  try {
+    const screenshot = await CAT.agent.dom.screenshot({
+      tabId,
+      selector: qrSelector,
+    });
+    if (screenshot) {
+      return {
+        ...result,
+        message:
+          '请扫描二维码登录' +
+          (platform === 'wechat' ? '微信公众号' : '小红书'),
+        content: '请扫描二维码登录',
+        attachments: [screenshot],
+      };
+    }
+  } catch (e) {
+    // 二维码区域可能不存在（如页面结构变更），回退到全页截图
+    try {
+      const fullScreenshot = await CAT.agent.dom.screenshot({ tabId });
+      if (fullScreenshot) {
+        return {
+          ...result,
+          message: '请查看页面并手动登录',
+          content: '未找到二维码区域，请查看页面手动登录',
+          attachments: [fullScreenshot],
+        };
+      }
+    } catch (_) {}
   }
 
   return { ...result, message: '请手动登录' };
