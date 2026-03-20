@@ -2,7 +2,7 @@
 // @name         generate_image
 // @description  生成图片（封面图、文章配图等）。自动查找支持图片生成的模型（通过 supportsImageOutput 标记），生成后保存到 OPFS 并返回
 // @param        prompt string [required] 图片描述/生成提示词
-// @param        savePath string 保存路径（相对 OPFS workspace），默认 content-creator/images/{timestamp}.png
+// @param        savePath string 保存路径（相对 OPFS workspace），默认 media-ops/images/{timestamp}.png
 // @grant        CAT.agent.model
 // @grant        CAT.agent.conversation
 // @grant        CAT.agent.opfs
@@ -74,15 +74,12 @@ if (!imageBlock) {
   };
 }
 
-// 4. 从 attachment 存储读取图片数据，保存到 workspace OPFS
-const savePath = args.savePath || 'content-creator/images/' + Date.now() + '.png';
+// 4. 从 attachment 存储读取图片 Blob，保存到 workspace OPFS
+const savePath = args.savePath || 'media-ops/images/' + Date.now() + '.png';
 
-const attachmentData = await CAT.agent.opfs.readAttachment(
-  imageBlock.attachmentId,
-  'dataurl'
-);
-if (attachmentData && attachmentData.content) {
-  await CAT.agent.opfs.write(savePath, attachmentData.content);
+const attachmentData = await CAT.agent.opfs.readAttachment(imageBlock.attachmentId);
+if (attachmentData && attachmentData.data) {
+  await CAT.agent.opfs.write(savePath, attachmentData.data);
 }
 
 return {

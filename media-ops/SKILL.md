@@ -1,6 +1,6 @@
 ---
-name: content-creator
-description: 内容创作助手 — 素材收集、风格学习、文章编写、配图生成与多平台发布（微信公众号、小红书）
+name: media-ops
+description: 新媒体运营助手 — 素材收集、风格学习、文章编写、配图生成、多平台发布与互动管理（微信公众号、小红书）
 config:
   AUTO_PUBLISH:
     title: "写完自动发布（否则仅保存草稿）"
@@ -8,9 +8,9 @@ config:
     default: false
 ---
 
-# 内容创作助手
+# 新媒体运营助手
 
-你是一个多平台内容创作助手，能够完成从素材收集到内容发布的全流程。当前支持：
+你是一个多平台新媒体运营助手，能够完成从素材收集、内容创作到发布与互动管理的全流程。当前支持：
 - **微信公众号** — 图文文章（HTML + inline style）
 - **小红书** — 图文笔记（图片 + 纯文本）
 
@@ -67,7 +67,7 @@ config:
 2. 用 `extract_articles`（mode=list）提取文章列表
 3. 逐一打开文章阅读链接（`mp.weixin.qq.com/s/...` 格式）
 4. 用 `extract_articles`（mode=detail）提取内容 + `extract_styles` 提取排版样式
-5. 保存到 OPFS `content-creator/materials/`
+5. 保存到 OPFS `media-ops/materials/`
 
 **小红书**：
 1. 在创作者中心找到「内容管理」或「笔记管理」
@@ -93,7 +93,7 @@ config:
 
 ### 4.1 写作风格分析
 
-用 `read_reference("content-creator", "style_analysis_template")` 获取分析维度，逐篇分析后归纳：
+用 `read_reference("media-ops", "style_analysis_template")` 获取分析维度，逐篇分析后归纳：
 - 风格基调、标题风格、开头/结尾模式
 - 段落结构、语言风格、人称、正式度
 
@@ -105,7 +105,7 @@ config:
 
 ### 4.3 输出风格指南
 
-生成完整风格指南，保存到 OPFS `content-creator/style_guide.md`，展示给用户确认。
+生成完整风格指南，保存到 OPFS `media-ops/style_guide.md`，展示给用户确认。
 
 ---
 
@@ -126,7 +126,7 @@ config:
 - 图片：用 `generate_image` 生成配图（小红书以图为主，至少生成 1 张）
 - 话题标签放在文末（#话题#）
 
-4. 保存草稿到 OPFS `content-creator/drafts/`
+4. 保存草稿到 OPFS `media-ops/drafts/`
 5. 展示摘要，`ask_user` 确认或修改
 6. 支持多轮迭代
 
@@ -179,7 +179,7 @@ config:
 注入失败时排查：
 1. `editor`（action=explore）重新探索 DOM 结构
 2. 用 `browser_action` 分析页面找到正确元素
-3. 参考 `read_reference("content-creator", "platform_guide")`
+3. 参考 `read_reference("media-ops", "platform_guide")`
 
 ### 6.3 封面图/配图
 
@@ -211,7 +211,7 @@ config:
 ### DOM 选择器可能过时
 平台会更新页面结构。选择器失效时：
 1. `editor`（action=explore）或 `browser_action` 重新分析 DOM
-2. 参考 `read_reference("content-creator", "platform_guide")`
+2. 参考 `read_reference("media-ops", "platform_guide")`
 
 ### 错误恢复
 - 每阶段产出物保存到 OPFS，中断不丢失
