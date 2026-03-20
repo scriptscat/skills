@@ -3,7 +3,7 @@
 // @description  生成图片（封面图、文章配图等）。自动查找支持图片生成的模型（通过 supportsImageOutput 标记），生成后保存到 OPFS 并返回
 // @param        prompt string [required] 图片描述/生成提示词
 // @param        style string 风格描述，确保同一组图片风格一致（如"扁平插画、暖色调、圆角卡通风"），会自动拼接到 prompt 前
-// @param        savePath string 保存路径（相对 OPFS workspace），默认 social-publisher/images/{timestamp}.png
+// @param        savePath string 保存路径（相对 OPFS workspace），默认 wechat-publisher/images/{timestamp}.png
 // @grant        CAT.agent.model
 // @grant        CAT.agent.conversation
 // @grant        CAT.agent.opfs
@@ -81,7 +81,7 @@ if (!imageBlock) {
 }
 
 // 4. 从 attachment 存储读取图片 Blob，保存到 workspace OPFS
-const savePath = args.savePath || 'social-publisher/images/' + Date.now() + '.png';
+const savePath = args.savePath || 'wechat-publisher/images/' + Date.now() + '.png';
 
 const attachmentData = await CAT.agent.opfs.readAttachment(imageBlock.attachmentId);
 if (attachmentData && attachmentData.data) {

@@ -1,7 +1,6 @@
 // ==SkillScript==
 // @name         login
-// @description  检测平台登录状态，未登录时自动切换到二维码模式并截图返回，或轮询等待登录完成。支持微信公众号、小红书
-// @param        platform string[wechat,xiaohongshu] [required] 目标平台
+// @description  检测微信公众号登录状态，未登录时截图二维码返回，或轮询等待登录完成
 // @param        tabId number [required] 页面所在的标签页 ID
 // @param        action string[check,wait] [required] check=检测状态并截图二维码，wait=轮询等待登录
 // @param        timeout number 等待超时（秒），仅 wait 模式，默认 120
@@ -9,52 +8,28 @@
 // @timeout      180000
 // ==/SkillScript==
 
-const platform = args.platform;
 const tabId = args.tabId;
 
 // executeScript 返回 {result, tabId} 包装对象，提取实际值
 const unwrap = (v) =>
   v && typeof v === 'object' && 'result' in v ? v.result : v;
 
-// 各平台的登录检测配置
-const platformConfig = {
-  wechat: {
-    loggedInSelectors: ['.weui-desktop-layout', '.acount_box-nickname'],
-    loginPageSelectors: [
-      '.login__type__container__scan',
-      '.login__type__container',
-    ],
-    getNickname: `
-      var el = document.querySelector('.acount_box-nickname, .weui-desktop-account__nickname');
-      return el ? el.textContent.trim() : null;
-    `,
-    getExtra: `
-      return { token: new URLSearchParams(window.location.search).get('token') };
-    `,
-  },
-  xiaohongshu: {
-    loggedInSelectors: ['.user-info', '.user_avatar'],
-    loginPageSelectors: ['.login-container'],
-    getNickname: `
-      var el = document.querySelector('.user-info');
-      if (el) {
-        var text = el.textContent.trim();
-        return text.replace(/\\s*退出登录.*$/, '').trim() || null;
-      }
-      return null;
-    `,
-    getExtra: 'return {};',
-  },
+const config = {
+  loggedInSelectors: ['.weui-desktop-layout', '.acount_box-nickname'],
+  loginPageSelectors: [
+    '.login__type__container__scan',
+    '.login__type__container',
+  ],
+  getNickname: `
+    var el = document.querySelector('.acount_box-nickname, .weui-desktop-account__nickname');
+    return el ? el.textContent.trim() : null;
+  `,
+  getExtra: `
+    return { token: new URLSearchParams(window.location.search).get('token') };
+  `,
 };
 
-const config = platformConfig[platform];
-if (!config) {
-  return {
-    error: '不支持的平台: ' + platform + '，可选: wechat, xiaohongshu',
-  };
-}
-
-// 通用登录检测函数
+// 登录检测函数
 async function checkLogin() {
   const loggedInSels = JSON.stringify(config.loggedInSelectors);
   const loginPageSels = JSON.stringify(config.loginPageSelectors);
@@ -92,19 +67,6 @@ async function checkLogin() {
     } catch (_) {}
   }
 
-  // URL-based fallback for xiaohongshu: if on creator pages (not /login), assume logged in
-  if (status === 'unknown' && platform === 'xiaohongshu') {
-    if (pageUrl.includes('creator.xiaohongshu.com') && !pageUrl.includes('/login')) {
-      return {
-        status: 'logged_in',
-        platform,
-        nickname: null,
-        url: pageUrl,
-        note: '通过 URL 推断已登录（创作者页面无登录提示）',
-      };
-    }
-  }
-
   if (status === 'logged_in') {
     const nickname = unwrap(
       await CAT.agent.dom.executeScript(config.getNickname, { tabId })
@@ -114,7 +76,7 @@ async function checkLogin() {
     );
     return {
       status: 'logged_in',
-      platform,
+      platform: 'wechat',
       nickname,
       url: pageUrl || unwrap(
         await CAT.agent.dom.executeScript('return window.location.href;', {
@@ -125,33 +87,7 @@ async function checkLogin() {
     };
   }
 
-  return { status: status, platform, url: pageUrl };
-}
-
-// 小红书：切换到二维码登录模式
-async function switchToQrMode() {
-  if (platform !== 'xiaohongshu') return;
-
-  unwrap(
-    await CAT.agent.dom.executeScript(
-      `
-    var container = document.querySelector('.login-box-container');
-    if (!container) return false;
-
-    var imgs = container.querySelectorAll('img');
-    for (var i = 0; i < imgs.length; i++) {
-      if (imgs[i].width >= 50 && imgs[i].width <= 80) {
-        imgs[i].click();
-        return true;
-      }
-    }
-    return false;
-    `,
-      { tabId }
-    )
-  );
-
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  return { status: status, platform: 'wechat', url: pageUrl };
 }
 
 // ---- action: check ----
@@ -162,32 +98,22 @@ if (args.action === 'check') {
     return result;
   }
 
-  // 未登录：尝试切换到二维码模式，然后截图二维码区域
-  await switchToQrMode();
-
-  const qrSelectors = {
-    wechat: '.login__type__container__scan',
-    xiaohongshu: '.login-box-container',
-  };
-  const qrSelector = qrSelectors[platform];
-
+  // 未登录：截图二维码区域
   try {
     const screenshot = await CAT.agent.dom.screenshot({
       tabId,
-      selector: qrSelector,
+      selector: '.login__type__container__scan',
     });
     if (screenshot) {
       return {
         ...result,
-        message:
-          '请扫描二维码登录' +
-          (platform === 'wechat' ? '微信公众号' : '小红书'),
+        message: '请扫描二维码登录微信公众号',
         content: '请扫描二维码登录',
         attachments: [screenshot],
       };
     }
   } catch (e) {
-    // 二维码区域可能不存在（如页面结构变更），回退到全页截图
+    // 二维码区域可能不存在，回退到全页截图
     try {
       const fullScreenshot = await CAT.agent.dom.screenshot({ tabId });
       if (fullScreenshot) {
@@ -220,7 +146,7 @@ if (args.action === 'wait') {
 
   return {
     status: 'timeout',
-    platform,
+    platform: 'wechat',
     message: '等待登录超时（' + Math.round(maxWait / 1000) + '秒），请重试',
   };
 }

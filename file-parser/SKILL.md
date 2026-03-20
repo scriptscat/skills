@@ -48,4 +48,4 @@ description: 解析常见文件格式（Excel、PDF、Word、CSV、PPT），提�
 
 - Excel/CSV 超过 1000 行：先用默认 maxRows 预览，询问用户是否需要更多
 - PDF 超过 50 页：先解析前几页，再按需解析后续页
-- 如果解析结果过大，建议保存到 OPFS 再引用
+- 如果解析结果过大，分批解析并在上下文中直接使用（不要保存到 OPFS 再读取，opfs_read 只返回 blob URL 无法取回文本）
