@@ -25,13 +25,13 @@ Code examples for the Agent script API, located in [`examples/`](./examples/):
 
 ## Installation
 
-Zip a skill directory and import it in ScriptCat extension **Agent → Skills** page.
+Open the `SKILL.cat.md` URL in your browser, and ScriptCat will prompt to install the skill. You can also paste a `SKILL.cat.md` URL in the **Agent → Skills** page.
 
 ## Skill Structure
 
 ```
 skill-name/
-├── SKILL.md          # Prompt + YAML frontmatter (name, description, config)
+├── SKILL.cat.md          # Prompt + YAML frontmatter (name, description, config)
 ├── scripts/          # Skill Scripts using ==SkillScript== header format (optional)
 └── references/       # Reference docs for Agent context (optional)
 ```
@@ -40,7 +40,7 @@ Scripts in the `scripts/` directory use the `==SkillScript==` header format to d
 
 ### Config Fields
 
-Skills can declare configuration fields in `SKILL.md` frontmatter. Users fill values in the UI, scripts access them via `CAT_CONFIG`:
+Skills can declare configuration fields in `SKILL.cat.md` frontmatter. Users fill values in the UI, scripts access them via `CAT_CONFIG`:
 
 ```yaml
 ---

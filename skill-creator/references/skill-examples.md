@@ -8,7 +8,7 @@ The most complete Skill in this repo. Study its patterns when writing your own.
 
 ```
 browser-automation/
-├── SKILL.md
+├── SKILL.cat.md
 └── scripts/
     ├── list_tabs.js         # List all open tabs
     ├── navigate.js          # Navigate to URL
@@ -20,7 +20,7 @@ browser-automation/
     └── click_and_wait.js    # CDP trusted click + wait for changes
 ```
 
-### What makes its SKILL.md good
+### What makes its SKILL.cat.md good
 
 **1. Opening line sets the context immediately:**
 
@@ -103,10 +103,10 @@ For guiding LLM behavior without tool scripts — translation, writing style, co
 
 ```
 translator/
-└── SKILL.md
+└── SKILL.cat.md
 ```
 
-Example SKILL.md body:
+Example SKILL.cat.md body:
 ```markdown
 ---
 name: translator
@@ -134,14 +134,14 @@ For providing a group of related tools:
 
 ```
 web-scraper/
-├── SKILL.md
+├── SKILL.cat.md
 └── scripts/
     ├── fetch_content.js
     ├── parse_html.js
     └── extract_links.js
 ```
 
-The SKILL.md should describe when to use each tool and how they compose:
+The SKILL.cat.md should describe when to use each tool and how they compose:
 ```markdown
 ## Tools
 | Tool | Input → Output |
@@ -163,7 +163,7 @@ For scenarios requiring large external knowledge:
 
 ```
 api-helper/
-├── SKILL.md
+├── SKILL.cat.md
 ├── scripts/
 │   └── call_api.js
 └── references/
@@ -171,7 +171,7 @@ api-helper/
     └── auth_guide.md
 ```
 
-In SKILL.md, give explicit triggers for each reference:
+In SKILL.cat.md, give explicit triggers for each reference:
 ```markdown
 When the user asks about authentication or gets a 401 error, use read_reference to load `auth_guide.md`.
 For the full list of available endpoints, use read_reference to load `endpoints.md`.
@@ -187,7 +187,7 @@ Both publisher Skills follow the same multi-phase pipeline architecture, adapted
 
 ```
 wechat-publisher/
-├── SKILL.md
+├── SKILL.cat.md
 ├── scripts/
 │   ├── login.js           # Check status / wait for QR login
 │   ├── editor.js          # Explore / inject / upload_cover
@@ -233,7 +233,7 @@ WeChat needs both writing style (tone, structure) and layout style (HTML templat
 - ⚠️ Xiaohongshu publish is INSTANT — no confirmation dialog!
 ```
 
-The SKILL.md doesn't just say "be careful" — it specifies exactly when to warn and what the risk is.
+The SKILL.cat.md doesn't just say "be careful" — it specifies exactly when to warn and what the risk is.
 
 **6. OPFS anti-pattern called out explicitly:**
 
@@ -258,7 +258,7 @@ A simpler pattern for Skills that provide format-specific processing.
 
 ```
 file-parser/
-├── SKILL.md
+├── SKILL.cat.md
 └── scripts/
     ├── parse_excel.js   # .xlsx/.xls → JSON rows
     ├── parse_pdf.js     # .pdf → per-page text
@@ -269,7 +269,7 @@ file-parser/
 
 ### What makes the dispatch pattern good
 
-**1. SKILL.md is a routing table:**
+**1. SKILL.cat.md is a routing table:**
 
 ```markdown
 | Format | Extension | Script | Output |
@@ -295,22 +295,22 @@ The Agent knows when it has partial data and can ask the user if they need more.
 
 **4. No over-engineering:**
 
-Each script does one thing — parse a format. No multi-action pattern needed because the operations don't share logic. The dispatch happens in SKILL.md (the Agent picks the right script), not in code.
+Each script does one thing — parse a format. No multi-action pattern needed because the operations don't share logic. The dispatch happens in SKILL.cat.md (the Agent picks the right script), not in code.
 
 ### When to use the dispatch pattern
 
 - Format/type-specific processing (file parsing, API integrations per service)
 - Each operation is independent with no shared state
-- The routing logic is simple enough for the LLM to handle via the SKILL.md table
+- The routing logic is simple enough for the LLM to handle via the SKILL.cat.md table
 
 ## Key takeaways
 
-1. **SKILL.md is a prompt, not documentation** — write as instructions for the Agent ("You now have tools to..."), not as a reference for humans ("This Skill provides...")
+1. **SKILL.cat.md is a prompt, not documentation** — write as instructions for the Agent ("You now have tools to..."), not as a reference for humans ("This Skill provides...")
 2. **Description triggers everything** — 30-80 words, specific keywords, list trigger scenarios
 3. **Scripts should be self-contained** — each Skill Script declares its own @grant and works independently
 4. **Show input → output in tool tables** — don't just repeat @description
 5. **Branch in workflows** — real tasks have conditions; a flat numbered list isn't enough
 6. **Examples teach better than rules** — `→`/`←` compact format, cover diverse scenarios
 7. **Caveats should include recovery actions** — "if X happens, do Y", not just "X might happen"
-8. **Use references for bulk content** — keep SKILL.md under 500 lines, push large docs to references/ with explicit read conditions
+8. **Use references for bulk content** — keep SKILL.cat.md under 500 lines, push large docs to references/ with explicit read conditions
 9. **Choose the right pattern** — pipeline for multi-phase workflows, dispatch for format-specific routing, tool-set for related operations on the same domain

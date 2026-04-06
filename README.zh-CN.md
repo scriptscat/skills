@@ -23,13 +23,13 @@ Agent 脚本 API 代码示例，位于 [`examples/`](./examples/)：
 
 ## 安装
 
-将技能目录压缩为 `.zip` 文件，在 ScriptCat 扩展的 **Agent → Skills** 页面中导入。
+在浏览器中打开 `SKILL.cat.md` 链接，ScriptCat 会自动弹出安装提示。也可以在 **Agent → Skills** 页面中粘贴 `SKILL.cat.md` URL 安装。
 
 ## 技能目录结构
 
 ```
 skill-name/
-├── SKILL.md          # 提示词 + YAML frontmatter（name, description, config）
+├── SKILL.cat.md          # 提示词 + YAML frontmatter（name, description, config）
 ├── scripts/          # Skill 脚本，使用 ==SkillScript== 头部格式（可选）
 └── references/       # Agent 上下文参考文档（可选）
 ```
@@ -38,7 +38,7 @@ skill-name/
 
 ### 配置字段
 
-Skill 可以在 `SKILL.md` frontmatter 中声明配置字段。用户在 UI 中填写值，脚本通过 `CAT_CONFIG` 访问：
+Skill 可以在 `SKILL.cat.md` frontmatter 中声明配置字段。用户在 UI 中填写值，脚本通过 `CAT_CONFIG` 访问：
 
 ```yaml
 ---

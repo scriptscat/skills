@@ -1400,7 +1400,7 @@ declare namespace CATAgentSkills {
     updatetime: number;
   }
 
-  /** Config field definition declared in SKILL.md frontmatter. */
+  /** Config field definition declared in SKILL.cat.md frontmatter. */
   interface SkillConfigField {
     /** Display title. */
     title: string;
@@ -1418,9 +1418,9 @@ declare namespace CATAgentSkills {
 
   /** Full Skill record including the prompt and config schema. */
   interface SkillRecord extends SkillSummary {
-    /** SKILL.md body (markdown after frontmatter removal). */
+    /** SKILL.cat.md body (markdown after frontmatter removal). */
     prompt: string;
-    /** Config schema from SKILL.md frontmatter. */
+    /** Config schema from SKILL.cat.md frontmatter. */
     config?: Record<string, SkillConfigField>;
   }
 
@@ -1436,8 +1436,8 @@ declare namespace CATAgentSkills {
     get(name: string): Promise<SkillRecord | null>;
 
     /**
-     * Install a Skill from a SKILL.md string, with optional bundled scripts and references.
-     * @param skillMd - The SKILL.md content (with YAML frontmatter).
+     * Install a Skill from a SKILL.cat.md string, with optional bundled scripts and references.
+     * @param skillMd - The SKILL.cat.md content (with YAML frontmatter).
      * @param scripts - Skill Script scripts to bundle.
      * @param references - Reference documents to bundle.
      */
@@ -1595,7 +1595,7 @@ declare const CAT: {
 /**
  * Skill configuration values injected into the Skill Script sandbox at runtime.
  *
- * Declared in the `config` block of a SKILL.md frontmatter and filled in by
+ * Declared in the `config` block of a SKILL.cat.md frontmatter and filled in by
  * the user through the Skill settings UI. The object is frozen at injection
  * time, so properties are read-only.
  */

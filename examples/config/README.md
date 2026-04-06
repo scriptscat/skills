@@ -1,6 +1,6 @@
 # Skill Config Examples
 
-Examples demonstrating the **Skill Config** feature — declaring configuration fields in `SKILL.md` frontmatter and accessing them via `CAT_CONFIG` in Skill Script scripts.
+Examples demonstrating the **Skill Config** feature — declaring configuration fields in `SKILL.cat.md` frontmatter and accessing them via `CAT_CONFIG` in Skill Script scripts.
 
 ## Skills
 
@@ -11,7 +11,7 @@ Examples demonstrating the **Skill Config** feature — declaring configuration 
 
 ## How Config Works
 
-### 1. Declare in SKILL.md
+### 1. Declare in SKILL.cat.md
 
 ```yaml
 ---
