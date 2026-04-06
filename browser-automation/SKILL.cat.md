@@ -2,13 +2,13 @@
 name: browser-automation
 description: Browser automation — analyze pages with a sub-agent, then perform DOM operations (click, fill, navigate, screenshot, scroll). Use when the user wants to interact with web pages, fill forms, extract data, or automate browser tasks.
 scripts:
-  - scripts/browser_action.js
-  - scripts/click_and_wait.js
-  - scripts/navigate.js
-  - scripts/screenshot.js
-  - scripts/scroll.js
-  - scripts/smart_fill.js
-  - scripts/wait_for.js
+  - browser_action.js
+  - click_and_wait.js
+  - navigate.js
+  - screenshot.js
+  - scroll.js
+  - smart_fill.js
+  - wait_for.js
 ---
 
 # Browser Automation Skill

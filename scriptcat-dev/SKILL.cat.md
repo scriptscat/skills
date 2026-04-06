@@ -2,12 +2,12 @@
 name: scriptcat-dev
 description: 脚本猫/油猴脚本开发助手 — 帮助编写、调试和优化 UserScript 用户脚本。覆盖标准 GM API（兼容 Tampermonkey/Violentmonkey）和 ScriptCat 特有功能（后台脚本、定时任务、Agent API、文件存储）。当用户想写油猴脚本、用户脚本、ScriptCat 脚本或者需要对网页进行自动化修改时使用。
 scripts:
-  - scripts/analyze_page.js
+  - analyze_page.js
 references:
-  - references/gm_api.md
-  - references/metadata.md
-  - references/patterns.md
-  - references/scriptcat_api.md
+  - gm_api.md
+  - metadata.md
+  - patterns.md
+  - scriptcat_api.md
 ---
 
 # 用户脚本开发助手

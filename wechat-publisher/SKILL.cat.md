@@ -2,15 +2,15 @@
 name: wechat-publisher
 description: 微信公众号运营助手 — 素材收集、风格学习、文章编写、配图生成、发布与管理。当用户想写公众号文章、管理微信公众号内容、学习历史文章写作与排版风格、创建图文内容、或发布/管理草稿时使用。
 scripts:
-  - scripts/editor.js
-  - scripts/extract_articles.js
-  - scripts/extract_styles.js
-  - scripts/generate_image.js
-  - scripts/login.js
-  - scripts/manage_styles.js
+  - editor.js
+  - extract_articles.js
+  - extract_styles.js
+  - generate_image.js
+  - login.js
+  - manage_styles.js
 references:
-  - references/platform_guide.md
-  - references/style_analysis_template.md
+  - platform_guide.md
+  - style_analysis_template.md
 config:
   AUTO_PUBLISH:
     title: "写完自动发布（否则仅保存草稿）"

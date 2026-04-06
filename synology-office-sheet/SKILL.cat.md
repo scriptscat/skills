@@ -2,8 +2,8 @@
 name: synology-office-sheet
 description: Read and write Synology Office spreadsheet cells. Use when the user wants to interact with a Synology Office (DSM) spreadsheet — read cell data, write/update cell values, or automate spreadsheet operations. Requires the spreadsheet page to be open in a browser tab.
 scripts:
-  - scripts/read_sheet.js
-  - scripts/write_cells.js
+  - read_sheet.js
+  - write_cells.js
 ---
 
 # Synology Office Sheet

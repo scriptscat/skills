@@ -2,11 +2,11 @@
 name: file-parser
 description: 解析常见文件格式（Excel、PDF、Word、CSV、PPT），提取文本和结构化数据。当用户上传文件附件、需要提取表格数据、解析 PDF 文档、读取 Word/PPT 内容或处理 CSV 数据时使用。支持从附件（attachmentId）或 OPFS 路径读取。
 scripts:
-  - scripts/parse_csv.js
-  - scripts/parse_excel.js
-  - scripts/parse_pdf.js
-  - scripts/parse_pptx.js
-  - scripts/parse_word.js
+  - parse_csv.js
+  - parse_excel.js
+  - parse_pdf.js
+  - parse_pptx.js
+  - parse_word.js
 ---
 
 # 文件解析 Skill
