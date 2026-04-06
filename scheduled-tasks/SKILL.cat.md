@@ -1,6 +1,15 @@
 ---
 name: scheduled-tasks
 description: Create, list, update, delete, and trigger cron-based scheduled tasks. Use for recurring automation (daily summaries, periodic checks, timed notifications), one-off scheduled jobs, or managing existing tasks (view, modify, pause, resume, delete).
+scripts:
+  - scripts/create_scheduled_task.js
+  - scripts/delete_scheduled_task.js
+  - scripts/list_scheduled_tasks.js
+  - scripts/run_scheduled_task_now.js
+  - scripts/update_scheduled_task.js
+references:
+  - references/cron_cheatsheet.md
+  - references/event_listener_template.md
 ---
 
 # Scheduled Tasks Skill

@@ -1,6 +1,10 @@
 ---
 name: scriptcat-skill-creator
 description: Create and improve ScriptCat Agent Skills. Use when the user wants to create a new Skill, write Skill Scripts, improve an existing Skill, or package a Skill for distribution. Also applies when the user says things like "make a tool that does X", "build an Agent plugin", "automate XX with a Skill", or wants to extend the Agent's capabilities.
+references:
+  - references/scriptcat.d.ts
+  - references/skill-examples.md
+  - references/skill-script-api.md
 ---
 
 # ScriptCat Skill Creator
