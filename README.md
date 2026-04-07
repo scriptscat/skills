@@ -6,11 +6,16 @@ Skills and examples for [ScriptCat](https://github.com/scriptscat/scriptcat) Age
 
 ## Skills
 
-| Skill | Description |
-|-------|-------------|
-| [browser-automation](./browser-automation/) | Page analysis, DOM operations, form filling, screenshots, navigation |
-| [scheduled-tasks](./scheduled-tasks/) | Cron-based task scheduling with internal (LLM auto-run) and event (script callback) modes |
-| [skill-creator](./skill-creator/) | Helps create, test and package new Skills |
+| Skill | Description | Install |
+|-------|-------------|---------|
+| [browser-automation](./browser-automation/) | Page analysis, DOM operations, form filling, screenshots, navigation | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/browser-automation/SKILL.cat.md) |
+| [scheduled-tasks](./scheduled-tasks/) | Cron-based task scheduling with internal (LLM auto-run) and event (script callback) modes | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/scheduled-tasks/SKILL.cat.md) |
+| [skill-creator](./skill-creator/) | Helps create, test and package new Skills | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/skill-creator/SKILL.cat.md) |
+| [file-parser](./file-parser/) | Parse common file formats (Excel, PDF, Word, CSV, PPT), extract text and structured data | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/file-parser/SKILL.cat.md) |
+| [scriptcat-dev](./scriptcat-dev/) | UserScript development assistant — write, debug and optimize user scripts | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/scriptcat-dev/SKILL.cat.md) |
+| [synology-office-sheet](./synology-office-sheet/) | Read and write Synology Office spreadsheet cells | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/synology-office-sheet/SKILL.cat.md) |
+| [wechat-publisher](./wechat-publisher/) | WeChat Official Account assistant — content collection, writing, image generation and publishing | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/wechat-publisher/SKILL.cat.md) |
+| [xiaohongshu-publisher](./xiaohongshu-publisher/) | Xiaohongshu (RED) assistant — note writing, style learning, image generation and publishing | [Install](https://raw.githubusercontent.com/scriptscat/skills/main/xiaohongshu-publisher/SKILL.cat.md) |
 
 ## Examples
 

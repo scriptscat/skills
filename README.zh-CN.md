@@ -4,11 +4,16 @@
 
 ## 技能列表
 
-| 技能 | 说明 |
-|------|------|
-| [browser-automation](./browser-automation/) | 页面分析、DOM 操作、表单填写、截图、导航 |
-| [scheduled-tasks](./scheduled-tasks/) | 基于 cron 的定时任务，支持 internal（LLM 自动执行）和 event（脚本回调）两种模式 |
-| [skill-creator](./skill-creator/) | 辅助创建、测试和打包新的 Skill |
+| 技能 | 说明 | 安装 |
+|------|------|------|
+| [browser-automation](./browser-automation/) | 页面分析、DOM 操作、表单填写、截图、导航 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/browser-automation/SKILL.cat.md) |
+| [scheduled-tasks](./scheduled-tasks/) | 基于 cron 的定时任务，支持 internal（LLM 自动执行）和 event（脚本回调）两种模式 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/scheduled-tasks/SKILL.cat.md) |
+| [skill-creator](./skill-creator/) | 辅助创建、测试和打包新的 Skill | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/skill-creator/SKILL.cat.md) |
+| [file-parser](./file-parser/) | 解析常见文件格式（Excel、PDF、Word、CSV、PPT），提取文本和结构化数据 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/file-parser/SKILL.cat.md) |
+| [scriptcat-dev](./scriptcat-dev/) | 脚本猫/油猴脚本开发助手 — 编写、调试和优化用户脚本 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/scriptcat-dev/SKILL.cat.md) |
+| [synology-office-sheet](./synology-office-sheet/) | 读写群晖 Synology Office 电子表格单元格 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/synology-office-sheet/SKILL.cat.md) |
+| [wechat-publisher](./wechat-publisher/) | 微信公众号运营助手 — 素材收集、文章编写、配图生成与发布 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/wechat-publisher/SKILL.cat.md) |
+| [xiaohongshu-publisher](./xiaohongshu-publisher/) | 小红书运营助手 — 笔记编写、风格学习、配图生成与发布 | [安装](https://raw.githubusercontent.com/scriptscat/skills/main/xiaohongshu-publisher/SKILL.cat.md) |
 
 ## 示例
 
